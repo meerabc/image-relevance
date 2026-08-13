@@ -1,22 +1,25 @@
 require('dotenv').config();
 const path = require('path');
 const { processBatch } = require('./services/batchService');
-const { costLog } = require('./services/visionService');
+const db = require('./db');
 
 async function run() {
-    // Defining the path to the image directory
     const imageDir = path.join(__dirname, '../data/images');
 
-    console.log('STARTING BATCH PROCESSING\n');
-    
-    // Executing the batch process
-    const results = await processBatch(imageDir);
+    console.log('Starting batch processing');
 
-    console.log('\nBATCH PROCESSING RESULTS\n');
-    console.log(JSON.stringify(results, null, 2));
+    const summary = await processBatch(imageDir);
 
-    console.log('\nCOST TRACKING\n');
-    console.log(`TOTAL VISION API CALLS: ${costLog.totalVisionCalls}\n`);
+    console.log('Batch processing complete');
+    console.log(`Processed: ${summary.processed}`);
+    console.log(`Low confidence: ${summary.lowConfidence}`);
+    console.log(`Failed: ${summary.failed}`);
+
+    await db.pool.end();
 }
 
-run();
+run().catch((err) => {
+    console.error('Batch run failed:', err);
+    process.exit(1);
+});
+
