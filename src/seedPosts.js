@@ -15,6 +15,21 @@ const posts = [
         content: "Gray wolves are large apex predators that live and hunt in structured packs. They communicate through howling and visual displays within remote wilderness regions."
     },
     {
+        title: "Caring for Your Dog at Home",
+        topic: "dog",
+        content: "Dogs are loyal companion animals that require regular exercise, grooming, and a balanced diet. Training and socialization from an early age help dogs adapt well to family life."
+    },
+    {
+        title: "Black Bears in North American Forests",
+        topic: "bear",
+        content: "Black bears roam dense forests across North America, foraging for berries, nuts, and small animals. They are strong swimmers and climbers, and typically avoid direct contact with humans."
+    },
+    {
+        title: "Migration Patterns of Wild Deer",
+        topic: "deer",
+        content: "Deer travel in herds across grasslands and forest edges, often migrating seasonally in search of food. Their keen sense of smell and hearing help them detect predators from a distance."
+    },
+    {
         title: "Deep Space Exploration and Galaxies",
         topic: "astronomy",
         content: "Modern astrophysics utilizes space telescopes to photograph distant galaxies, black holes, and cosmic nebula formations light years away from earth."
