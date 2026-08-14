@@ -7,6 +7,8 @@ const db = require('../db');
 
 // waiting a bit before retrying to avoid rate limits
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+// pacing between images to stay under the 15 requests per minute vision quota
+const PACE_DELAY_MS = 4500;
 
 // flagging images below this confidence instead of trusting them
 const CONFIDENCE_FLAG_THRESHOLD = 0.70;
@@ -43,6 +45,7 @@ async function processBatch(imageDirectory) {
         }
 
         const imagePath = path.join(imageDirectory, file);
+        await delay(PACE_DELAY_MS);
         let attempt = 1;
         const maxRetries = 3;
         let success = false;
@@ -97,7 +100,7 @@ async function processBatch(imageDirectory) {
                 console.log(`Failed on ${file}, error: ${result.error}`);
                 attempt++;
                 if (attempt <= maxRetries) {
-                    await delay(2000);
+                    await delay(20000);
                 }
             }
         }
