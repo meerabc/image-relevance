@@ -39,7 +39,7 @@ function evaluateMatch(postVector, imageVector, imageMetadata, postTopic) {
                               subjectTokens.some(token => normalizedTopic.includes(token));
 
     // Rejecting when subjects diverge despite falling near the similarity threshold
-    if (!hasSubjectOverlap && similarityScore < 0.75) {
+    if (!hasSubjectOverlap && similarityScore < 0.65) {
         return {
             isMatch: false,
             score: similarityScore,
