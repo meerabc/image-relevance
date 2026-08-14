@@ -1,0 +1,11 @@
+run: docker compose up -d && node src/db/migrate.js && node src/server.js
+seed: node src/seedPosts.js && node src/runBatch.js
+test: npx jest
+base_url: http://localhost:3000
+
+endpoints:
+  - GET /posts/:id/images
+  - GET /suggestions/:id
+  - POST /suggestions/:id/approve
+  - POST /suggestions/:id/reject
+  - GET /costs
