@@ -1,0 +1,27 @@
+# Build Log
+
+An honest account of where AI assistance helped, where it was wrong, and what I changed or verified myself throughout this project.
+
+## Where AI helped
+
+- Generated the initial database schema (`schema.sql`), the connection pool, and the migration script, and explained what a migration actually is and why it matters when I asked.
+- Wrote the first drafts of the layered services, `visionService`, `embeddingService`, `matchingService`, `mismatchGuard`, `batchService`, and explained the reasoning behind each design choice as we went, upserts instead of plain inserts, why embeddings live in a separate table from tags, why the confidence, similarity, and subject overlap checks run as three separate guards instead of one combined score.
+- Wrote the Jest test suite, schema validation, isolated guard logic tests with hand picked vector angles to control cosine similarity precisely, and the real database backed matching tests.
+- Helped debug several real failures during the build, detailed below.
+
+## Where AI was wrong, and what I caught or changed
+
+- **Wrong model recommendation.** When my Gemini vision calls started hitting a 429 quota error, the AI first suggested switching from `gemini-3.5-flash` to `gemini-2.5-flash`, which also failed for me. I had to go check my actual account's real rate limits on the AI Studio dashboard myself and report the real numbers back before we picked the correct model, `gemini-3.5-flash-lite`, based on what my account could actually support, not a guess.
+- **Wrong curl commands for my environment.** Multiple `curl` commands the AI gave me either triggered PowerShell security prompts or returned unreadable raw output, since `curl` is aliased to `Invoke-WebRequest` on Windows PowerShell. I pushed back and we switched to `Invoke-RestMethod` for all API testing going forward, which the AI should have accounted for from the start given I was clearly on Windows.
+- **Stale server process debugging.** When I added new routes to `server.js`, they returned 404 even though the file on disk was correct. The AI first suggested adding debug logging before we found the real cause, I had never actually restarted the running node process after editing the file. This happened more than once, I learned to always fully stop and restart the server after any route change.
+- **A file I thought was saved was actually empty.** `reviewService.js` was blank on disk despite me believing I had pasted the content in, which caused a misleading "Internal server error" instead of a clear error message. Caught by directly checking file contents with `type` rather than trusting my own memory of having saved it.
+- **My own filename assumption broke the eval script.** I initially wanted to delete `fox.jpg` to avoid confusion with the `red-fox-*.jpg` batch, since my eval script's first version marked it as an incorrect match, dragging precision down to 83%. The AI correctly pushed back, the matching logic itself was right, `fox.jpg` genuinely is a valid red fox photo, the eval script's ground truth check was just too narrow. We fixed the eval set to accept multiple valid filename prefixes per topic instead of deleting real, working data.
+- **Semantic matching genuinely failed on the first real test.** A post titled only with the scientific name "Vulpes vulpes", sharing zero words with any image subject, initially got rejected by the mismatch guard even though the embedding similarity score, 0.68, was meaningfully higher than any real mismatch in the corpus, which topped out at 0.61. This wasn't an AI mistake exactly, it was a real threshold tuned too conservatively. We lowered the guard's no overlap threshold from 0.75 to 0.65 based on these real numbers, then re-ran the full test suite and eval script to confirm nothing else broke.
+- **The confidence flagging requirement was never actually proven live.** Every real image in my 53 image corpus scored between 0.95 and 1.0 confidence, well above the 0.70 flag threshold, so the low confidence flagging code path never actually fired on real data. We tried downloading a deliberately ambiguous, blurry image to trigger it, the vision model still scored it 0.95 confidently. Rather than keep spending API quota chasing a live example, we extracted the actual decision rule into its own testable function, `determineStatus()`, and wrote boundary tests proving the logic is correct on both sides of the threshold, an honest, isolated proof instead of a live corpus example that never actually occurred.
+
+## What I verified or decided myself
+
+- Ran every command myself and pasted real terminal output back at each step, nothing in `EVIDENCE.md` is fabricated or assumed, every screenshot and pasted result came from my own machine.
+- Caught that `matchingController.js` and `server.js` were never actually committed to git in earlier phases, despite existing locally, by checking `git status` before trusting the file tree.
+- Decided to keep `demoWolfRejection.js` and `testSemanticMatching.js` as real, permanent, committed files rather than throwaway scripts or inline code pasted into `EVIDENCE.md`, for consistency, so both proofs are reproducible the same way.
+- Chose to exclude the 50 downloaded Pexels images from git via `.gitignore`, keeping only the 3 original images tracked, since the download script already makes the corpus reproducible without bloating the repository.
