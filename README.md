@@ -90,7 +90,7 @@ Every vision and embedding call is logged to the cost_log table.
    node src/server.js
    ```
    ![Server running](./docs/screenshots/server-startup.png)
-   
+
 8. Run the test suite:
    ```
    npx jest
@@ -100,11 +100,9 @@ Every vision and embedding call is logged to the cost_log table.
    node src/runEval.js
    ```
 
-
-
 ## Testing
 
-Full test suite, 14 tests covering schema validation, mismatch guard logic, and real matching accuracy against the seeded corpus:
+Full test suite, 18 tests covering schema validation, low confidence flagging, mismatch guard logic, and real matching accuracy against the seeded corpus:
 
 ```
 npx jest
@@ -123,9 +121,12 @@ See `EVIDENCE.md` for the full run output.
 ## Demo Highlights
 
 - `GET /posts/:id/images` for the red fox post correctly ranks a red fox image first.
-- Forcing a gray wolf image as a candidate against the red fox post gets rejected by the mismatch guard with a category mismatch explanation.
+- Forcing a gray wolf image as a candidate against the red fox post gets rejected by the mismatch guard with a category mismatch explanation. Reproduce this directly with `node src/demoWolfRejection.js`.
 - `GET /posts/:id/images` for the astronomy post returns "no confident match", since nothing in the corpus is space related.
+- Semantic matching works on meaning, not just shared words, a post titled only with the scientific name "Vulpes vulpes" still correctly matches red fox images despite sharing zero vocabulary with any image's subject. Reproduce this directly with `node src/testSemanticMatching.js`.
 - `POST /suggestions/:id/approve` and `/reject` persist a human review decision independent of the guard's own automatic decision.
+
+See `EVIDENCE.md` for full proof of every item above, including screenshots and real API responses.
 
 ## Limitations
 
