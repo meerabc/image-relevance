@@ -13,6 +13,11 @@ const PACE_DELAY_MS = 4500;
 // flagging images below this confidence instead of trusting them
 const CONFIDENCE_FLAG_THRESHOLD = 0.70;
 
+// deciding whether a successfully tagged image should be trusted or flagged for review
+function determineStatus(confidence) {
+    return confidence < CONFIDENCE_FLAG_THRESHOLD ? 'low_confidence' : 'processed';
+}
+
 // inserting a new image row or updating the existing one if the file was already processed before
 async function upsertImage({ fileName, subject, category, attributes, caption, confidence, status, errorMessage }) {
     const result = await db.query(
@@ -62,9 +67,7 @@ async function processBatch(imageDirectory) {
                 const data = result.data;
 
                 // deciding status based on confidence, flagging low confidence instead of accepting it silently
-                const status = data.confidence < CONFIDENCE_FLAG_THRESHOLD
-                    ? 'low_confidence'
-                    : 'processed';
+                const status = determineStatus(data.confidence);
 
                 const imageId = await upsertImage({
                     fileName: file,
@@ -126,5 +129,6 @@ async function processBatch(imageDirectory) {
 }
 
 module.exports = {
-    processBatch
+    processBatch,
+    determineStatus
 };
