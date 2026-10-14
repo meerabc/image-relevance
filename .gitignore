@@ -5,3 +5,4 @@ data/images/deer-*.jpg
 data/images/dog-*.jpg
 data/images/gray-wolf-*.jpg
 data/images/red-fox-*.jpg
+.cache/

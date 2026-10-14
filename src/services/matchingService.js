@@ -2,6 +2,7 @@ const { evaluateMatch } = require('./mismatchGuard');
 const db = require('../db');
 
 // fetching a post along with its stored embedding
+// pgvector returns the vector column as a string like "[0.1,0.2,...]"
 async function getPostWithEmbedding(postId) {
     const result = await db.query(
         `SELECT p.id, p.title, p.topic, p.content, pe.vector
@@ -13,13 +14,17 @@ async function getPostWithEmbedding(postId) {
     return result.rows[0] || null;
 }
 
-// fetching every image that has a stored embedding
+// ranking every image with an embedding against the post vector in SQL
+// pgvector's <=> operator is cosine distance, so similarity = 1 - distance
 // images that failed processing never got an embedding, so they are excluded naturally here
-async function getImagesWithEmbeddings() {
+async function rankImagesBySimilarity(postVector) {
     const result = await db.query(
-        `SELECT i.id, i.file_name, i.subject, i.category, i.attributes, i.caption, i.confidence, i.status, ie.vector
+        `SELECT i.id, i.file_name, i.subject, i.category, i.attributes, i.caption, i.confidence, i.status,
+                1 - (ie.vector <=> $1::vector) AS score
          FROM images i
-         JOIN image_embeddings ie ON ie.image_id = i.id`
+         JOIN image_embeddings ie ON ie.image_id = i.id
+         ORDER BY ie.vector <=> $1::vector`,
+        [postVector]
     );
     return result.rows;
 }
@@ -50,17 +55,12 @@ async function findMatchesForPost(postId) {
         };
     }
 
-    const images = await getImagesWithEmbeddings();
+    const rankedImages = await rankImagesBySimilarity(post.vector);
     const evaluations = [];
 
-    // evaluating every candidate image against the post through the mismatch guard
-    for (const image of images) {
-        const evaluation = evaluateMatch(
-            post.vector,
-            image.vector,
-            { subject: image.subject, confidence: image.confidence },
-            post.topic
-        );
+    // evaluating every candidate image through the mismatch guard
+    for (const image of rankedImages) {
+        const evaluation = evaluateMatch(Number(image.score), image, post.topic);
 
         const saved = await saveSuggestion(
             post.id,
@@ -83,7 +83,7 @@ async function findMatchesForPost(postId) {
         });
     }
 
-    // sorting candidates by semantic similarity score, highest first
+    // rows already come back ranked, keeping the sort as a safety net
     evaluations.sort((a, b) => b.score - a.score);
 
     const approvedMatches = evaluations.filter(item => item.isMatch);

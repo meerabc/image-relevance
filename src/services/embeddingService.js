@@ -1,38 +1,54 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// Initializing Gemini with API key from the .env file
+const LOCAL_MODEL = 'Xenova/all-MiniLM-L6-v2'; // 384 dims
+const GEMINI_MODEL = 'gemini-embedding-001';   // 3072 dims
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const geminiModel = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
-// Initializing the embedding model rather than a vision model
-const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
+// the local model is loaded lazily, once, on the first embedding call
+// the require lives inside so importing this module never loads the library
+let extractorPromise = null;
+function getExtractor() {
+    if (!extractorPromise) {
+        const { pipeline, env } = require('@xenova/transformers');
+        env.allowLocalModels = false;
+        extractorPromise = pipeline('feature-extraction', LOCAL_MODEL);
+    }
+    return extractorPromise;
+}
 
-// Tracking API usage for the embedding model
-const embeddingCostLog = {
-    totalEmbeddingCalls: 0
-};
-
-async function generateEmbedding(text) {
+async function embedWithLocalModel(text) {
     try {
-        // Generating the mathematical vector for the provided text
-        const result = await model.embedContent(text);
-        
-        // Tracking the API call
-        embeddingCostLog.totalEmbeddingCalls += 1;
-        
-        return {
-            success: true,
-            vector: result.embedding.values
-        };
+        const extractor = await getExtractor();
+        const output = await extractor(text, { pooling: 'mean', normalize: true });
+        return { success: true, vector: Array.from(output.data) };
     } catch (error) {
-        // Catching and reporting any errors during the API call
-        return {
-            success: false,
-            error: error.message
-        };
+        return { success: false, error: error.message };
     }
 }
 
-module.exports = {
-    generateEmbedding,
-    embeddingCostLog
-};
+// kept for the provider comparison benchmark, switching providers requires
+// re-embedding everything since different models produce incomparable vectors
+async function embedWithGemini(text) {
+    try {
+        const result = await geminiModel.embedContent(text);
+        return { success: true, vector: result.embedding.values };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function generateEmbedding(text) {
+    if (process.env.EMBEDDING_PROVIDER === 'gemini') {
+        return embedWithGemini(text);
+    }
+    return embedWithLocalModel(text);
+}
+
+// pgvector columns take a literal like "[0.1,0.2,...]", not a JS array
+function toVectorLiteral(vector) {
+    return `[${vector.join(',')}]`;
+}
+
+module.exports = { generateEmbedding, toVectorLiteral };

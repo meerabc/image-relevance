@@ -1,3 +1,4 @@
+CREATE EXTENSION IF NOT EXISTS vector;
 -- Images: one row per image processed by the vision model
 CREATE TABLE IF NOT EXISTS images (
     id SERIAL PRIMARY KEY,
@@ -14,9 +15,10 @@ CREATE TABLE IF NOT EXISTS images (
 );
 
 -- Embeddings for images, kept in a separate table (1:1 with images)
+-- 384 dims = all-MiniLM-L6-v2, the local embedding model
 CREATE TABLE IF NOT EXISTS image_embeddings (
     image_id INTEGER PRIMARY KEY REFERENCES images(id) ON DELETE CASCADE,
-    vector FLOAT8[] NOT NULL,
+    vector vector(384) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -31,7 +33,7 @@ CREATE TABLE IF NOT EXISTS posts (
 
 CREATE TABLE IF NOT EXISTS post_embeddings (
     post_id INTEGER PRIMARY KEY REFERENCES posts(id) ON DELETE CASCADE,
-    vector FLOAT8[] NOT NULL,
+    vector vector(384) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -57,6 +59,10 @@ CREATE TABLE IF NOT EXISTS cost_log (
     success BOOLEAN NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- cosine distance indexes, ranking happens in SQL instead of Node
+CREATE INDEX IF NOT EXISTS idx_image_embeddings_vector ON image_embeddings USING hnsw (vector vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_post_embeddings_vector ON post_embeddings USING hnsw (vector vector_cosine_ops);
 
 CREATE INDEX IF NOT EXISTS idx_suggestions_post_id ON suggestions(post_id);
 CREATE INDEX IF NOT EXISTS idx_suggestions_review_status ON suggestions(review_status);

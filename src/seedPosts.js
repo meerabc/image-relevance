@@ -1,6 +1,6 @@
 require('dotenv').config();
 const db = require('./db');
-const { generateEmbedding } = require('./services/embeddingService');
+const { generateEmbedding, toVectorLiteral } = require('./services/embeddingService');
 const { logCost } = require('./services/costService');
 
 const posts = [
@@ -39,6 +39,9 @@ const posts = [
 async function seed() {
     console.log('Seeding posts...\n');
 
+    // a seed run starts from a clean posts table so reruns never duplicate
+    await db.query('DELETE FROM posts');
+
     for (const post of posts) {
         // Inserting the post itself
         const insertResult = await db.query(
@@ -59,8 +62,8 @@ async function seed() {
         }
 
         await db.query(
-            `INSERT INTO post_embeddings (post_id, vector) VALUES ($1, $2)`,
-            [postId, embeddingResult.vector]
+            `INSERT INTO post_embeddings (post_id, vector) VALUES ($1, $2::vector)`,
+            [postId, toVectorLiteral(embeddingResult.vector)]
         );
         console.log(`  Embedding stored.\n`);
     }

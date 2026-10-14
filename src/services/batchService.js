@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { understandImage } = require('./visionService');
-const { generateEmbedding } = require('./embeddingService');
+const { generateEmbedding, toVectorLiteral } = require('./embeddingService');
 const { logCost } = require('./costService');
 const db = require('../db');
 
@@ -90,9 +90,9 @@ async function processBatch(imageDirectory) {
 
                 if (embeddingResult.success) {
                     await db.query(
-                        `INSERT INTO image_embeddings (image_id, vector) VALUES ($1, $2)
+                        `INSERT INTO image_embeddings (image_id, vector) VALUES ($1, $2::vector)
                          ON CONFLICT (image_id) DO UPDATE SET vector = EXCLUDED.vector`,
-                        [imageId, embeddingResult.vector]
+                        [imageId, toVectorLiteral(embeddingResult.vector)]
                     );
                 } else {
                     console.log(`Embedding failed for ${file}: ${embeddingResult.error}`);
