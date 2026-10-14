@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image Relevance Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Image Relevance <span>review console</span></div>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" data-tab="match" aria-selected="true">Match a post</button>
+    <button role="tab" data-tab="library" aria-selected="false">Image library</button>
+    <button role="tab" data-tab="costs" aria-selected="false">AI costs</button>
+  </nav>
+</header>
+
+<main>
+  <section id="tab-match" class="view" role="tabpanel">
+    <aside class="posts" aria-label="Posts">
+      <h2>Posts</h2>
+      <ul id="post-list" class="post-list"></ul>
+    </aside>
+    <div id="match-stage" class="stage">
+      <div class="empty">
+        <h1>Pick a post to find its image</h1>
+        <p>The engine scores every image in the library against the post, then the mismatch guard decides whether any of them is good enough to recommend.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-library" class="view single" role="tabpanel" hidden>
+    <div class="view-head">
+      <h1>Image library</h1>
+      <div class="filters" id="lib-filters"></div>
+    </div>
+    <div id="lib-grid" class="lib-grid"></div>
+  </section>
+
+  <section id="tab-costs" class="view single" role="tabpanel" hidden>
+    <div class="view-head"><h1>AI costs</h1></div>
+    <div id="cost-summary" class="cost-summary"></div>
+    <div class="table-wrap"><table id="cost-table"></table></div>
+  </section>
+</main>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

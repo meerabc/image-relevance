@@ -61,4 +61,4 @@ CREATE TABLE IF NOT EXISTS cost_log (
 CREATE INDEX IF NOT EXISTS idx_suggestions_post_id ON suggestions(post_id);
 CREATE INDEX IF NOT EXISTS idx_suggestions_review_status ON suggestions(review_status);
 CREATE INDEX IF NOT EXISTS idx_images_status ON images(status);
-CREATE INDEX IF NOT EXISTS idx_cost_log_call_type ON cost_log(call_type);s
+CREATE INDEX IF NOT EXISTS idx_cost_log_call_type ON cost_log(call_type);
