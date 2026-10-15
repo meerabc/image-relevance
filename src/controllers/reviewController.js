@@ -1,4 +1,5 @@
-const { getSuggestionById, setReviewStatus } = require('../services/reviewService');
+const { getSuggestionById, setReviewStatus, getReviewStats } = require('../services/reviewService');
+const logger = require('../utils/logger');
 
 // getting a suggestion and explaining why it was approved or rejected
 async function inspectSuggestion(req, res) {
@@ -17,6 +18,7 @@ async function inspectSuggestion(req, res) {
 
         res.json(suggestion);
     } catch (error) {
+        logger.error('Suggestion inspection failed', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 }
@@ -38,6 +40,7 @@ async function approveSuggestion(req, res) {
 
         res.json(updated);
     } catch (error) {
+        logger.error('Suggestion approval failed', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 }
@@ -59,6 +62,18 @@ async function rejectSuggestion(req, res) {
 
         res.json(updated);
     } catch (error) {
+        logger.error('Suggestion rejection failed', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}
+
+// human vs guard disagreement metrics, the feedback loop made visible
+async function reviewStats(req, res) {
+    try {
+        const stats = await getReviewStats();
+        res.json(stats);
+    } catch (error) {
+        logger.error('Review stats failed', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 }
@@ -66,5 +81,6 @@ async function rejectSuggestion(req, res) {
 module.exports = {
     inspectSuggestion,
     approveSuggestion,
-    rejectSuggestion
+    rejectSuggestion,
+    reviewStats
 };

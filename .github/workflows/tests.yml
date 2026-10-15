@@ -1,0 +1,46 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: appuser
+          POSTGRES_PASSWORD: apppassword
+          POSTGRES_DB: image_relevance
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U appuser -d image_relevance"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+
+    env:
+      DATABASE_URL: postgresql://appuser:apppassword@localhost:5432/image_relevance
+      EMBEDDING_PROVIDER: local
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # local embeddings only: seeding needs no API keys
+      - run: node src/db/migrate.js
+      - run: node src/seedPosts.js
+
+      # matching accuracy tests skip themselves when the image corpus is absent
+      - run: npx jest

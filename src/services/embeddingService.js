@@ -1,10 +1,14 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const LOCAL_MODEL = 'Xenova/all-MiniLM-L6-v2'; // 384 dims
-const GEMINI_MODEL = 'gemini-embedding-001';   // 3072 dims
+const GEMINI_MODEL = 'gemini-embedding-001';   // 3072 dims, kept for the provider comparison
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const geminiModel = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+
+// which provider is active, embeddings from different models are never mixed in the DB
+const EMBEDDING_PROVIDER = process.env.EMBEDDING_PROVIDER === 'gemini' ? 'gemini' : 'local';
+const EMBEDDING_MODEL_NAME = EMBEDDING_PROVIDER === 'gemini' ? GEMINI_MODEL : LOCAL_MODEL;
 
 // the local model is loaded lazily, once, on the first embedding call
 // the require lives inside so importing this module never loads the library
@@ -40,7 +44,7 @@ async function embedWithGemini(text) {
 }
 
 async function generateEmbedding(text) {
-    if (process.env.EMBEDDING_PROVIDER === 'gemini') {
+    if (EMBEDDING_PROVIDER === 'gemini') {
         return embedWithGemini(text);
     }
     return embedWithLocalModel(text);
@@ -51,4 +55,9 @@ function toVectorLiteral(vector) {
     return `[${vector.join(',')}]`;
 }
 
-module.exports = { generateEmbedding, toVectorLiteral };
+module.exports = {
+    generateEmbedding,
+    toVectorLiteral,
+    EMBEDDING_PROVIDER,
+    EMBEDDING_MODEL_NAME
+};

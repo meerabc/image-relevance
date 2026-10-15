@@ -3,8 +3,15 @@ require('dotenv').config();
 // demonstrating the mismatch guard's core rejection scenario
 // forces a comparison between the red fox post and a gray wolf image
 // run this after the server is started and the corpus has been processed
+const db = require('./db');
+
 async function run() {
-    const response = await fetch('http://localhost:3000/posts/4/images');
+    // look the post up by topic instead of assuming a fixed id,
+    // ids shift whenever posts are reseeded
+    const postResult = await db.query(`SELECT id FROM posts WHERE topic = 'red fox' LIMIT 1`);
+    const postId = postResult.rows[0].id;
+
+    const response = await fetch(`http://localhost:${process.env.PORT || 3000}/posts/${postId}/images`);
     const data = await response.json();
 
     console.log('Post:', data.postTitle);
@@ -19,6 +26,11 @@ async function run() {
     console.log('Subject detected:', wolfCandidate.subject);
     console.log('Result:', wolfCandidate.isMatch ? 'APPROVED' : 'REJECTED');
     console.log('Reason:', wolfCandidate.reason);
+
+    await db.pool.end();
 }
 
-run();
+run().catch((err) => {
+    console.error('Demo failed:', err);
+    process.exit(1);
+});

@@ -1,4 +1,4 @@
-// Frontend for the image relevance API. Talks only to existing endpoints plus GET /posts and GET /images.
+// Frontend for the image relevance API.
 // Thresholds mirror src/services/mismatchGuard.js, used here only to draw the guard markers.
 const SIMILARITY_THRESHOLD = 0.55;
 const CONFIDENCE_THRESHOLD = 0.70;
@@ -36,6 +36,20 @@ function showTab(name) {
   document.querySelectorAll('.view').forEach((v) => { v.hidden = v.id !== `tab-${name}`; });
   if (name === 'library' && !loaded.library) loadLibrary();
   if (name === 'costs') loadCosts();
+  if (name === 'review') loadReviewStats();
+}
+
+/* ---------- header health chip ---------- */
+async function loadHealth() {
+  const chip = $('#status-chip');
+  try {
+    const h = await api('/health');
+    chip.textContent = `${h.embeddingModel.replace('Xenova/', '')} · ${h.embeddingProvider}`;
+    chip.classList.add('ok');
+  } catch {
+    chip.textContent = 'API offline';
+    chip.classList.add('err');
+  }
 }
 
 /* ---------- posts + matching ---------- */
@@ -49,7 +63,7 @@ async function loadPosts() {
     list.innerHTML = posts.map((p) => `
       <li><button class="post-btn" data-id="${p.id}">
         <b>${esc(p.title)}</b><small>topic: ${esc(p.topic)}${p.has_embedding ? '' : ' · no embedding yet'}</small>
-      </button></li>`).join('') || '<li class="loading">No posts yet. Run node src/seedPosts.js first.</li>';
+      </button></li>`).join('') || '<li class="loading">No posts yet. Add one in "Add content".</li>';
     list.querySelectorAll('.post-btn').forEach((b) => b.addEventListener('click', () => runMatch(b.dataset.id)));
   } catch (e) {
     list.innerHTML = `<li class="loading">Could not load posts: ${esc(e.message)}</li>`;
@@ -195,6 +209,113 @@ async function review(btn) {
   }
 }
 
+/* ---------- add content: new post ---------- */
+function wirePostForm() {
+  $('#post-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+      title: $('#post-title').value.trim(),
+      topic: $('#post-topic').value.trim(),
+      content: $('#post-content').value.trim()
+    };
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true;
+    try {
+      const post = await api('/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      toast(`Post "${post.title}" saved and embedded`);
+      e.target.reset();
+      loadPosts();
+    } catch (err) {
+      const detail = err.message + ($('#post-form').dataset.details || '');
+      toast(detail, true);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
+/* ---------- add content: image upload ---------- */
+let selectedFile = null;
+
+function wireUpload() {
+  const input = $('#image-input');
+  const preview = $('#upload-preview');
+  const dropText = $('#dropzone-text');
+  const btn = $('#upload-btn');
+
+  input.addEventListener('change', () => {
+    selectedFile = input.files[0] || null;
+    if (selectedFile) {
+      preview.src = URL.createObjectURL(selectedFile);
+      preview.hidden = false;
+      dropText.textContent = selectedFile.name;
+      btn.disabled = false;
+      $('#upload-status').innerHTML = '';
+    } else {
+      preview.hidden = true;
+      dropText.textContent = 'Choose a JPG or PNG, up to 10 MB';
+      btn.disabled = true;
+    }
+  });
+
+  btn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+    btn.disabled = true;
+    const status = $('#upload-status');
+    status.innerHTML = '<span class="chip">Uploading…</span>';
+    try {
+      const fd = new FormData();
+      fd.append('image', selectedFile);
+      const res = await api('/images', { method: 'POST', body: fd });
+
+      if (res.duplicate) {
+        status.innerHTML = `<span class="chip warn">Duplicate</span> <span>already in the library as <b>${esc(res.image.file_name)}</b> — no vision call was spent.</span>`;
+        toast('Duplicate image, skipped');
+        return;
+      }
+
+      status.innerHTML = '<span class="chip">Queued</span> <span>waiting for the vision job…</span>';
+      pollJob(res.jobId, status);
+    } catch (e) {
+      status.innerHTML = `<span class="chip bad">Upload failed</span> <span>${esc(e.message)}</span>`;
+      btn.disabled = false;
+    }
+  });
+}
+
+function pollJob(jobId, statusEl) {
+  const spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  let frame = 0;
+  const timer = setInterval(async () => {
+    try {
+      const job = await api(`/jobs/${jobId}`);
+      if (job.status === 'queued' || job.status === 'processing') {
+        statusEl.innerHTML = `<span class="chip">${spinner[frame++ % spinner.length]} ${job.status}</span> <span>the vision model is tagging your image…</span>`;
+        return;
+      }
+      clearInterval(timer);
+
+      if (job.status === 'done') {
+        const d = job.result.data;
+        statusEl.innerHTML = `
+          <div class="result-line"><span class="chip ok">Indexed</span> <b>${esc(d.subject)}</b></div>
+          <div class="result-line"><small>${esc(d.category)} · confidence ${Number(d.confidence).toFixed(2)} · ${job.result.embedded ? 'embedded locally' : 'embedding failed'}</small></div>
+          <div class="result-line"><small class="muted">${esc(d.caption)}</small></div>`;
+        toast('Image tagged and indexed');
+        loaded.library = false;
+        if (!$('#tab-library').hidden) loadLibrary();
+      } else {
+        statusEl.innerHTML = `<span class="chip bad">Failed</span> <span>${esc(job.error)}</span>`;
+      }
+      $('#upload-btn').disabled = false;
+    } catch (e) {
+      clearInterval(timer);
+      statusEl.innerHTML = `<span class="chip bad">Job tracking failed</span> <span>${esc(e.message)}</span>`;
+      $('#upload-btn').disabled = false;
+    }
+  }, 1500);
+}
+
 /* ---------- library ---------- */
 let libImages = [];
 let libFilter = 'all';
@@ -225,7 +346,34 @@ function renderLibrary() {
       <img src="${imgUrl(i.file_name)}" alt="${esc(i.caption || i.subject || i.file_name)}" loading="lazy">
       <div><b>${esc(i.subject || 'Unlabelled')}</b>
       <small>${esc(i.file_name)}${i.confidence != null ? ' · confidence ' + Number(i.confidence).toFixed(2) : ''}</small>
-      ${statusChip(i.status)}</div></article>`).join('') || '<p class="loading">No images processed yet. Run node src/runBatch.js.</p>';
+      ${statusChip(i.status)}</div></article>`).join('') || '<p class="loading">No images processed yet.</p>';
+}
+
+/* ---------- review insights ---------- */
+async function loadReviewStats() {
+  const summaryEl = $('#review-summary');
+  const tableEl = $('#review-table');
+  try {
+    const data = await api('/review/stats');
+    const s = data.summary;
+    summaryEl.innerHTML = `
+      <div class="stat"><b>${Number(s.total_approved)}</b><span>approved by humans</span></div>
+      <div class="stat"><b>${Number(s.total_rejected)}</b><span>rejected by humans</span></div>
+      <div class="stat ${Number(s.approved_against_guard) ? 'alert' : ''}"><b>${Number(s.approved_against_guard)}</b><span>approved against the guard</span></div>
+      <div class="stat ${Number(s.rejected_against_guard) ? 'alert' : ''}"><b>${Number(s.rejected_against_guard)}</b><span>rejected against the guard</span></div>`;
+
+    tableEl.innerHTML = `<thead><tr><th>Post</th><th>Image</th><th>Guard said</th><th>Human said</th><th>Why</th></tr></thead><tbody>` +
+      (data.disagreements.map((d) => `<tr>
+        <td>${esc(d.post_title)}</td>
+        <td>${esc(d.file_name)}<small class="muted"> · ${esc(d.subject || '')}</small></td>
+        <td>${d.is_match ? '<span class="chip ok">Approved</span>' : '<span class="chip bad">Rejected</span>'}</td>
+        <td>${d.review_status === 'approved' ? '<span class="chip ok">Approved</span>' : '<span class="chip bad">Rejected</span>'}</td>
+        <td class="why">${esc(d.reason)}</td>
+      </tr>`).join('') || '<tr><td colspan="5" class="loading">No disagreements recorded yet — approve or reject some candidates first.</td></tr>') +
+      '</tbody>';
+  } catch (e) {
+    summaryEl.innerHTML = `<p class="loading">Could not load review stats: ${esc(e.message)}</p>`;
+  }
 }
 
 /* ---------- costs ---------- */
@@ -246,3 +394,6 @@ async function loadCosts() {
 }
 
 loadPosts();
+loadHealth();
+wirePostForm();
+wireUpload();

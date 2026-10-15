@@ -1,4 +1,5 @@
 const db = require('../db');
+const logger = require('../utils/logger');
 
 // returning every cost log entry along with a summary count per call type
 async function getCosts(req, res) {
@@ -20,6 +21,7 @@ async function getCosts(req, res) {
             entries: entries.rows
         });
     } catch (error) {
+        logger.error('Cost listing failed', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 }

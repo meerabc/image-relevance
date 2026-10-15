@@ -1,4 +1,6 @@
+-- pgvector must be enabled before the vector type is usable
 CREATE EXTENSION IF NOT EXISTS vector;
+
 -- Images: one row per image processed by the vision model
 CREATE TABLE IF NOT EXISTS images (
     id SERIAL PRIMARY KEY,
@@ -10,6 +12,7 @@ CREATE TABLE IF NOT EXISTS images (
     confidence REAL,
     status TEXT NOT NULL DEFAULT 'pending', -- pending | processed | low_confidence | failed
     error_message TEXT,
+    file_hash TEXT, -- sha256 of the file bytes, duplicate uploads are rejected on this
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -19,10 +22,11 @@ CREATE TABLE IF NOT EXISTS images (
 CREATE TABLE IF NOT EXISTS image_embeddings (
     image_id INTEGER PRIMARY KEY REFERENCES images(id) ON DELETE CASCADE,
     vector vector(384) NOT NULL,
+    model TEXT, -- embedding model that produced this vector, vectors from different models are never mixed
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Posts: for now still small enough to seed manually
+-- Posts: seeded by script or created through POST /posts
 CREATE TABLE IF NOT EXISTS posts (
     id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,
@@ -34,6 +38,7 @@ CREATE TABLE IF NOT EXISTS posts (
 CREATE TABLE IF NOT EXISTS post_embeddings (
     post_id INTEGER PRIMARY KEY REFERENCES posts(id) ON DELETE CASCADE,
     vector vector(384) NOT NULL,
+    model TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -60,9 +65,20 @@ CREATE TABLE IF NOT EXISTS cost_log (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- upgrades for databases created before these columns existed
+ALTER TABLE images ADD COLUMN IF NOT EXISTS file_hash TEXT;
+ALTER TABLE image_embeddings ADD COLUMN IF NOT EXISTS model TEXT;
+ALTER TABLE post_embeddings ADD COLUMN IF NOT EXISTS model TEXT;
+-- existing vectors were produced by the local MiniLM model
+UPDATE image_embeddings SET model = 'Xenova/all-MiniLM-L6-v2' WHERE model IS NULL;
+UPDATE post_embeddings SET model = 'Xenova/all-MiniLM-L6-v2' WHERE model IS NULL;
+
 -- cosine distance indexes, ranking happens in SQL instead of Node
 CREATE INDEX IF NOT EXISTS idx_image_embeddings_vector ON image_embeddings USING hnsw (vector vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS idx_post_embeddings_vector ON post_embeddings USING hnsw (vector vector_cosine_ops);
+
+-- duplicate uploads are rejected on hash before any AI call is spent
+CREATE UNIQUE INDEX IF NOT EXISTS idx_images_file_hash ON images(file_hash) WHERE file_hash IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_suggestions_post_id ON suggestions(post_id);
 CREATE INDEX IF NOT EXISTS idx_suggestions_review_status ON suggestions(review_status);

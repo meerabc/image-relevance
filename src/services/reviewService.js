@@ -27,7 +27,37 @@ async function setReviewStatus(suggestionId, status) {
     return result.rows[0] || null;
 }
 
+// where human decisions disagree with the guard's automatic verdict,
+// these are exactly the cases worth investigating
+async function getReviewStats() {
+    const summary = await db.query(
+        `SELECT count(*) FILTER (WHERE review_status = 'approved') AS total_approved,
+                count(*) FILTER (WHERE review_status = 'rejected') AS total_rejected,
+                count(*) FILTER (WHERE review_status = 'approved' AND is_match = false) AS approved_against_guard,
+                count(*) FILTER (WHERE review_status = 'rejected' AND is_match = true) AS rejected_against_guard
+         FROM suggestions`
+    );
+
+    const disagreements = await db.query(
+        `SELECT s.id, s.score, s.is_match, s.reason, s.review_status, s.reviewed_at,
+                p.title AS post_title, i.file_name, i.subject
+         FROM suggestions s
+         JOIN posts p ON p.id = s.post_id
+         JOIN images i ON i.id = s.image_id
+         WHERE (s.review_status = 'approved' AND s.is_match = false)
+            OR (s.review_status = 'rejected' AND s.is_match = true)
+         ORDER BY s.reviewed_at DESC NULLS LAST
+         LIMIT 50`
+    );
+
+    return {
+        summary: summary.rows[0],
+        disagreements: disagreements.rows
+    };
+}
+
 module.exports = {
     getSuggestionById,
-    setReviewStatus
+    setReviewStatus,
+    getReviewStats
 };

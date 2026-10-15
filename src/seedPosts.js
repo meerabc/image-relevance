@@ -1,6 +1,6 @@
 require('dotenv').config();
 const db = require('./db');
-const { generateEmbedding, toVectorLiteral } = require('./services/embeddingService');
+const { generateEmbedding, toVectorLiteral, EMBEDDING_MODEL_NAME } = require('./services/embeddingService');
 const { logCost } = require('./services/costService');
 
 const posts = [
@@ -62,8 +62,8 @@ async function seed() {
         }
 
         await db.query(
-            `INSERT INTO post_embeddings (post_id, vector) VALUES ($1, $2::vector)`,
-            [postId, toVectorLiteral(embeddingResult.vector)]
+            `INSERT INTO post_embeddings (post_id, vector, model) VALUES ($1, $2::vector, $3)`,
+            [postId, toVectorLiteral(embeddingResult.vector), EMBEDDING_MODEL_NAME]
         );
         console.log(`  Embedding stored.\n`);
     }

@@ -1,6 +1,6 @@
 require('dotenv').config();
 const db = require('./db');
-const { findMatchesForPost } = require('./services/matchingService');
+const { rankImagesForPost } = require('./services/matchingService');
 const { evalSet } = require('./evalSet');
 
 async function getPostByTopic(topic) {
@@ -14,9 +14,12 @@ async function getPostByTopic(topic) {
 async function run() {
     console.log('Running evaluation\n');
 
-    let correct = 0;
     let total = 0;
-    const details = [];
+    let correct = 0;
+    let shouldMatch = 0;
+    let matchedCorrect = 0;
+    let shouldRefuse = 0;
+    let falseAccepts = 0;
 
     for (const testCase of evalSet) {
         const post = await getPostByTopic(testCase.topic);
@@ -26,40 +29,43 @@ async function run() {
             continue;
         }
 
-        const result = await findMatchesForPost(post.id);
+        const result = await rankImagesForPost(post.id);
         total++;
 
-        let isCorrect = false;
+        const topMatch = result.evaluations.find(item => item.isMatch) || null;
+        const actual = topMatch ? topMatch.file : 'no confident match';
+        let isCorrect;
 
         if (testCase.expectedPrefixes === null) {
-            // expecting no confident match at all for this post
-            isCorrect = result.topMatch === null;
-        } else if (result.topMatch) {
-            // checking if the top match's file starts with any of the accepted prefixes
-            isCorrect = testCase.expectedPrefixes.some(prefix => result.topMatch.file.startsWith(prefix));
+            // expecting a refusal, returning any match here is a false accept
+            shouldRefuse++;
+            isCorrect = topMatch === null;
+            if (!isCorrect) falseAccepts++;
+        } else {
+            shouldMatch++;
+            isCorrect = topMatch
+                ? testCase.expectedPrefixes.some(prefix => topMatch.file.startsWith(prefix))
+                : false;
+            if (isCorrect) matchedCorrect++;
         }
 
         if (isCorrect) correct++;
 
         const expectedLabel = testCase.expectedPrefixes ? testCase.expectedPrefixes.join(' or ') : 'no match';
-
-        details.push({
-            topic: testCase.topic,
-            expected: expectedLabel,
-            actual: result.topMatch ? result.topMatch.file : 'no match',
-            correct: isCorrect
-        });
-
         console.log(`Topic: ${testCase.topic}`);
-        console.log(`Expected: ${testCase.expectedPrefixes ? testCase.expectedPrefixes.join(' or ') : 'no confident match'}`);
-        console.log(`Actual: ${result.topMatch ? result.topMatch.file : 'no confident match'}`);
+        console.log(`Expected: ${expectedLabel}`);
+        console.log(`Actual: ${actual}`);
         console.log(`Correct: ${isCorrect}\n`);
     }
 
     const precision = total > 0 ? (correct / total) * 100 : 0;
+    const recall = shouldMatch > 0 ? (matchedCorrect / shouldMatch) * 100 : 0;
+    const falseAcceptRate = shouldRefuse > 0 ? (falseAccepts / shouldRefuse) * 100 : 0;
 
     console.log('Evaluation complete');
     console.log(`Top 1 precision: ${precision.toFixed(1)}% (${correct}/${total})`);
+    console.log(`Recall on should-match cases: ${recall.toFixed(1)}% (${matchedCorrect}/${shouldMatch})`);
+    console.log(`False accept rate on should-refuse cases: ${falseAcceptRate.toFixed(1)}% (${falseAccepts}/${shouldRefuse})`);
 
     await db.pool.end();
 }

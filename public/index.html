@@ -6,7 +6,7 @@
 <title>Image Relevance Review</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -15,8 +15,11 @@
   <nav class="tabs" role="tablist" aria-label="Sections">
     <button role="tab" data-tab="match" aria-selected="true">Match a post</button>
     <button role="tab" data-tab="library" aria-selected="false">Image library</button>
+    <button role="tab" data-tab="add" aria-selected="false">Add content</button>
+    <button role="tab" data-tab="review" aria-selected="false">Review insights</button>
     <button role="tab" data-tab="costs" aria-selected="false">AI costs</button>
   </nav>
+  <div id="status-chip" class="status-chip" role="status">checking model…</div>
 </header>
 
 <main>
@@ -41,9 +44,49 @@
     <div id="lib-grid" class="lib-grid"></div>
   </section>
 
+  <section id="tab-add" class="view single" role="tabpanel" hidden>
+    <div class="view-head"><h1>Add content</h1></div>
+    <div class="add-grid">
+      <form id="post-form" class="card-pad" novalidate>
+        <h2>New post</h2>
+        <label>Title
+          <input id="post-title" type="text" minlength="3" maxlength="200" placeholder="Behavior and Habitat of Red Foxes" required>
+        </label>
+        <label>Topic
+          <input id="post-topic" type="text" minlength="2" maxlength="100" placeholder="red fox" required>
+        </label>
+        <label>Content
+          <textarea id="post-content" rows="6" minlength="20" maxlength="5000" placeholder="A paragraph or two about the topic…" required></textarea>
+        </label>
+        <button class="btn primary" type="submit">Save &amp; embed post</button>
+        <p class="hint">The post is embedded locally the moment it is saved — no API key, no quota.</p>
+      </form>
+
+      <div class="card-pad">
+        <h2>Upload an image</h2>
+        <label class="dropzone" for="image-input">
+          <input type="file" id="image-input" accept="image/jpeg,image/png" hidden>
+          <img id="upload-preview" alt="Selected image preview" hidden>
+          <span id="dropzone-text">Choose a JPG or PNG, up to 10 MB</span>
+        </label>
+        <button class="btn primary" id="upload-btn" type="button" disabled>Tag &amp; index image</button>
+        <div id="upload-status" class="upload-status" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-review" class="view single" role="tabpanel" hidden>
+    <div class="view-head">
+      <h1>Review insights</h1>
+      <p class="sub">Where human decisions disagree with the guard — each one is a case worth investigating.</p>
+    </div>
+    <div id="review-summary" class="stat-grid"></div>
+    <div class="table-wrap"><table id="review-table"></table></div>
+  </section>
+
   <section id="tab-costs" class="view single" role="tabpanel" hidden>
     <div class="view-head"><h1>AI costs</h1></div>
-    <div id="cost-summary" class="cost-summary"></div>
+    <div id="cost-summary" class="stat-grid"></div>
     <div class="table-wrap"><table id="cost-table"></table></div>
   </section>
 </main>

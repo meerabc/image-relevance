@@ -1,4 +1,5 @@
 const { findMatchesForPost } = require('../services/matchingService');
+const logger = require('../utils/logger');
 
 async function getPostImages(req, res) {
     const postId = parseInt(req.params.id);
@@ -16,6 +17,7 @@ async function getPostImages(req, res) {
 
         res.json(result);
     } catch (error) {
+        logger.error(`Matching failed for post ${postId}`, error);
         res.status(500).json({ error: 'Internal server error' });
     }
 }

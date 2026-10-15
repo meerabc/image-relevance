@@ -1,12 +1,15 @@
-// threshold cut-offs for the guard's three checks
-const SIMILARITY_THRESHOLD = 0.55;
-const CONFIDENCE_THRESHOLD = 0.70;
-// similarity is computed by pgvector in SQL, so the guard only decides
-const NO_OVERLAP_SIMILARITY = 0.65;
+// threshold cut-offs for the guard's three checks, tunable through tuneThresholds.js
+const DEFAULT_THRESHOLDS = {
+    similarity: 0.55,
+    noOverlap: 0.65,
+    confidence: 0.70
+};
 
-function evaluateMatch(similarityScore, imageMetadata, postTopic) {
+// similarity is computed by pgvector in SQL, so the guard is a pure decision
+// function: score in, verdict out, no data access and no vector math
+function evaluateMatch(similarityScore, imageMetadata, postTopic, thresholds = DEFAULT_THRESHOLDS) {
     // Guard 1: checking AI confidence score
-    if (imageMetadata.confidence < CONFIDENCE_THRESHOLD) {
+    if (imageMetadata.confidence < thresholds.confidence) {
         return {
             isMatch: false,
             score: similarityScore,
@@ -15,7 +18,7 @@ function evaluateMatch(similarityScore, imageMetadata, postTopic) {
     }
 
     // Guard 2: checking overall semantic similarity threshold
-    if (similarityScore < SIMILARITY_THRESHOLD) {
+    if (similarityScore < thresholds.similarity) {
         return {
             isMatch: false,
             score: similarityScore,
@@ -33,7 +36,7 @@ function evaluateMatch(similarityScore, imageMetadata, postTopic) {
     const hasSubjectOverlap = topicTokens.some(token => normalizedSubject.includes(token)) ||
                               subjectTokens.some(token => normalizedTopic.includes(token));
 
-    if (!hasSubjectOverlap && similarityScore < NO_OVERLAP_SIMILARITY) {
+    if (!hasSubjectOverlap && similarityScore < thresholds.noOverlap) {
         return {
             isMatch: false,
             score: similarityScore,
@@ -50,5 +53,6 @@ function evaluateMatch(similarityScore, imageMetadata, postTopic) {
 
 module.exports = {
     evaluateMatch,
-    SIMILARITY_THRESHOLD
+    DEFAULT_THRESHOLDS,
+    SIMILARITY_THRESHOLD: DEFAULT_THRESHOLDS.similarity
 };

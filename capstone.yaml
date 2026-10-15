@@ -1,10 +1,19 @@
-run: docker compose up -d && node src/db/migrate.js && node src/server.js
+run: docker compose up -d --wait && node src/db/migrate.js && node src/server.js
 seed: node src/seedPosts.js && node src/runBatch.js
+eval: node src/runEval.js
+sweep: node src/tuneThresholds.js
 test: npx jest
 base_url: http://localhost:3000
 
 endpoints:
+  - GET /health
+  - GET /posts
+  - POST /posts
   - GET /posts/:id/images
+  - GET /images
+  - POST /images
+  - GET /jobs/:id
+  - GET /review/stats
   - GET /suggestions/:id
   - POST /suggestions/:id/approve
   - POST /suggestions/:id/reject

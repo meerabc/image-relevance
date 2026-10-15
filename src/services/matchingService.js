@@ -1,15 +1,17 @@
 const { evaluateMatch } = require('./mismatchGuard');
+const { EMBEDDING_MODEL_NAME } = require('./embeddingService');
 const db = require('../db');
 
 // fetching a post along with its stored embedding
 // pgvector returns the vector column as a string like "[0.1,0.2,...]"
+// the model filter guarantees vectors from different embedding models are never compared
 async function getPostWithEmbedding(postId) {
     const result = await db.query(
         `SELECT p.id, p.title, p.topic, p.content, pe.vector
          FROM posts p
          JOIN post_embeddings pe ON pe.post_id = p.id
-         WHERE p.id = $1`,
-        [postId]
+         WHERE p.id = $1 AND pe.model = $2`,
+        [postId, EMBEDDING_MODEL_NAME]
     );
     return result.rows[0] || null;
 }
@@ -23,8 +25,9 @@ async function rankImagesBySimilarity(postVector) {
                 1 - (ie.vector <=> $1::vector) AS score
          FROM images i
          JOIN image_embeddings ie ON ie.image_id = i.id
+         WHERE ie.model = $2
          ORDER BY ie.vector <=> $1::vector`,
-        [postVector]
+        [postVector, EMBEDDING_MODEL_NAME]
     );
     return result.rows;
 }
@@ -45,34 +48,36 @@ async function saveSuggestion(postId, imageId, score, isMatch, reason) {
     return result.rows[0];
 }
 
-async function findMatchesForPost(postId) {
+// shared core: rank, evaluate through the guard, optionally persist
+// the persist flag keeps measurement scripts (eval, threshold sweep) from
+// writing anything, only the live API path saves suggestions
+async function evaluateCandidates(postId, { persist }) {
     const post = await getPostWithEmbedding(postId);
 
     if (!post) {
         return {
             success: false,
-            error: 'Post not found or missing an embedding'
+            error: 'Post not found or its embedding is missing for the current embedding model'
         };
     }
 
     const rankedImages = await rankImagesBySimilarity(post.vector);
     const evaluations = [];
 
-    // evaluating every candidate image through the mismatch guard
     for (const image of rankedImages) {
         const evaluation = evaluateMatch(Number(image.score), image, post.topic);
+        let suggestionId = null;
+        let reviewStatus = null;
 
-        const saved = await saveSuggestion(
-            post.id,
-            image.id,
-            evaluation.score,
-            evaluation.isMatch,
-            evaluation.reason
-        );
+        if (persist) {
+            const saved = await saveSuggestion(post.id, image.id, evaluation.score, evaluation.isMatch, evaluation.reason);
+            suggestionId = saved.id;
+            reviewStatus = saved.review_status;
+        }
 
         evaluations.push({
-            suggestionId: saved.id,
-            reviewStatus: saved.review_status,
+            suggestionId,
+            reviewStatus,
             file: image.file_name,
             subject: image.subject,
             category: image.category,
@@ -86,6 +91,17 @@ async function findMatchesForPost(postId) {
     // rows already come back ranked, keeping the sort as a safety net
     evaluations.sort((a, b) => b.score - a.score);
 
+    return { success: true, post, evaluations };
+}
+
+async function findMatchesForPost(postId) {
+    const result = await evaluateCandidates(postId, { persist: true });
+
+    if (!result.success) {
+        return result;
+    }
+
+    const { post, evaluations } = result;
     const approvedMatches = evaluations.filter(item => item.isMatch);
 
     if (approvedMatches.length > 0) {
@@ -112,6 +128,12 @@ async function findMatchesForPost(postId) {
     };
 }
 
+// measurement path, identical logic but nothing is written to the database
+async function rankImagesForPost(postId) {
+    return evaluateCandidates(postId, { persist: false });
+}
+
 module.exports = {
-    findMatchesForPost
+    findMatchesForPost,
+    rankImagesForPost
 };

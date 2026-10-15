@@ -1,4 +1,4 @@
-const { evaluateMatch } = require('../src/services/mismatchGuard');
+const { evaluateMatch, DEFAULT_THRESHOLDS } = require('../src/services/mismatchGuard');
 
 describe('evaluateMatch', () => {
     test('approves a high confidence, high similarity, matching subject', () => {
@@ -31,6 +31,13 @@ describe('evaluateMatch', () => {
 
     test('approves a moderate similarity score when subject and topic actually match', () => {
         const result = evaluateMatch(0.6, { subject: 'red fox', confidence: 0.9 }, 'red fox');
+
+        expect(result.isMatch).toBe(true);
+    });
+
+    test('accepts a custom threshold operating point, used by the sweep script', () => {
+        const thresholds = { ...DEFAULT_THRESHOLDS, similarity: 0.40 };
+        const result = evaluateMatch(0.45, { subject: 'red fox', confidence: 0.9 }, 'red fox', thresholds);
 
         expect(result.isMatch).toBe(true);
     });

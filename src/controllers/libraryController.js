@@ -1,4 +1,5 @@
 const db = require('../db');
+const logger = require('../utils/logger');
 
 // listing every post so the frontend can show a picker (read only, no embeddings returned)
 async function listPosts(req, res) {
@@ -12,6 +13,7 @@ async function listPosts(req, res) {
         );
         res.json(result.rows);
     } catch (error) {
+        logger.error('Post listing failed', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 }
@@ -26,6 +28,7 @@ async function listImages(req, res) {
         );
         res.json(result.rows);
     } catch (error) {
+        logger.error('Image listing failed', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 }

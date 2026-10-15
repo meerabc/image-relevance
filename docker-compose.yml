@@ -17,6 +17,26 @@ services:
       timeout: 3s
       retries: 15
 
+  app:
+    build: .
+    container_name: image-relevance-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgresql://appuser:apppassword@db:5432/image_relevance
+      EMBEDDING_PROVIDER: local
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      PEXELS_API_KEY: ${PEXELS_API_KEY}
+    ports:
+      - '3000:3000'
+    volumes:
+      # images uploaded through the UI and the model download cache persist here
+      - ./data/images:/app/data/images
+      - model-cache:/app/.cache
+
 volumes:
   pgdata:
-
+  model-cache:
