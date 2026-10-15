@@ -4,7 +4,18 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "start": "node src/server.js",
+    "batch": "node src/runBatch.js",
+    "repair": "node src/repairEmbeddings.js",
+    "reembed": "node src/reembed.js",
+    "eval": "node src/runEval.js",
+    "tune": "node src/tuneThresholds.js",
+    "corpus:export": "node src/exportCorpus.js",
+    "corpus:seed": "node src/seedCorpus.js",
+    "fetch:pexels": "node src/fetchPexels.js",
+    "embed:manifest": "node src/embedManifest.js",
+    "bench": "node src/benchSearch.js"
   },
   "keywords": [],
   "author": "",

@@ -1,4 +1,6 @@
 const { EMBEDDING_PROVIDER, EMBEDDING_MODEL_NAME } = require('../services/embeddingService');
+const { DEFAULT_THRESHOLDS } = require('../services/mismatchGuard');
+const { countMissingEmbeddings, maybeRepairMissingEmbeddings, getRepairStatus } = require('../services/embeddingRepair');
 const db = require('../db');
 const logger = require('../utils/logger');
 
@@ -14,12 +16,22 @@ async function getHealth(req, res) {
                     (SELECT count(*) FROM images WHERE status = 'processed') AS images_processed
            `
         );
+        const missingEmbeddings = await countMissingEmbeddings();
+
+        if (missingEmbeddings > 0) {
+            // tagged images without an embedding never appear in matching;
+            // schedule the self-heal sweep and surface the gap instead of hiding it
+            maybeRepairMissingEmbeddings();
+        }
 
         res.json({
             status: 'ok',
             database: 'connected',
             embeddingProvider: EMBEDDING_PROVIDER,
             embeddingModel: EMBEDDING_MODEL_NAME,
+            guard: DEFAULT_THRESHOLDS,
+            imagesMissingEmbedding: missingEmbeddings,
+            lastEmbeddingRepair: getRepairStatus(),
             ...counts.rows[0],
             uptimeSeconds: Math.round(process.uptime())
         });

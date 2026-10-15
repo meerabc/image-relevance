@@ -2,7 +2,7 @@
 function log(level, message, error) {
     const stamp = new Date().toISOString();
     const detail = error ? (error.stack || error.message || String(error)) : '';
-    console[level === 'error' ? 'error' : 'log'](`[${stamp}] ${level.toUpperCase()} ${message}${detail ? ` — ${detail}` : ''}`);
+    console[level === 'error' ? 'error' : 'log'](`[${stamp}] ${level.toUpperCase()} ${message}${detail ? ` - ${detail}` : ''}`);
 }
 
 module.exports = {

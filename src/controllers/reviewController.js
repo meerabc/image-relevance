@@ -1,7 +1,7 @@
 const { getSuggestionById, setReviewStatus, getReviewStats } = require('../services/reviewService');
 const logger = require('../utils/logger');
 
-// getting a suggestion and explaining why it was approved or rejected
+// returning one suggestion together with the score and reason behind it
 async function inspectSuggestion(req, res) {
     const suggestionId = parseInt(req.params.id);
 

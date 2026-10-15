@@ -1,17 +1,17 @@
 require('dotenv').config();
 const db = require('./db');
-const { generateEmbedding, toVectorLiteral, EMBEDDING_MODEL_NAME } = require('./services/embeddingService');
+const { generateEmbedding, buildPostEmbeddingText, buildImageEmbeddingText, toVectorLiteral, EMBEDDING_MODEL_NAME } = require('./services/embeddingService');
 
-// re-embeds every stored caption and post with the current embedding provider.
-// needed whenever the embedding model changes, vectors from different models
-// are never compared and the matching queries filter on the model column.
+// re-embeds every stored post and image with the current embedding provider
+// AND the current embedding-text strategy. needed whenever the model changes
+// or the text builders change, vectors from different setups are never mixed.
 // vision results (tags, captions) are kept, only embeddings are recomputed,
 // so this never spends vision quota.
 async function reembedPosts() {
-    const posts = await db.query(`SELECT p.id, p.content FROM posts p LEFT JOIN post_embeddings pe ON pe.post_id = p.id`);
+    const posts = await db.query(`SELECT p.id, p.title, p.topic, p.content FROM posts p`);
 
     for (const post of posts.rows) {
-        const embeddingResult = await generateEmbedding(post.content);
+        const embeddingResult = await generateEmbedding(buildPostEmbeddingText(post));
         if (!embeddingResult.success) {
             console.log(`Post ${post.id} embedding failed: ${embeddingResult.error}`);
             continue;
@@ -27,12 +27,12 @@ async function reembedPosts() {
 
 async function reembedImages() {
     const images = await db.query(
-        `SELECT i.id, i.caption FROM images i LEFT JOIN image_embeddings ie ON ie.image_id = i.id
+        `SELECT i.id, i.subject, i.category, i.attributes, i.caption FROM images i
          WHERE i.caption IS NOT NULL`
     );
 
     for (const image of images.rows) {
-        const embeddingResult = await generateEmbedding(image.caption);
+        const embeddingResult = await generateEmbedding(buildImageEmbeddingText(image));
         if (!embeddingResult.success) {
             console.log(`Image ${image.id} embedding failed: ${embeddingResult.error}`);
             continue;

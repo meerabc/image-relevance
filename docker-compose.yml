@@ -30,13 +30,19 @@ services:
       EMBEDDING_PROVIDER: local
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       PEXELS_API_KEY: ${PEXELS_API_KEY}
+      # guard thresholds, tuned with npm run tune, empty default = code fallback
+      SIMILARITY_THRESHOLD: ${SIMILARITY_THRESHOLD:-}
+      NO_OVERLAP_THRESHOLD: ${NO_OVERLAP_THRESHOLD:-}
+      CONFIDENCE_THRESHOLD: ${CONFIDENCE_THRESHOLD:-}
     ports:
       - '3000:3000'
     volumes:
-      # images uploaded through the UI and the model download cache persist here
+      # images uploaded through the UI persist here
       - ./data/images:/app/data/images
-      - model-cache:/app/.cache
+      # bind-mounted host cache: the embedding model is downloaded once by the
+      # CLI scripts (batch, reembed) and the container reuses it instead of
+      # re-fetching from the Hugging Face hub at request time
+      - ./.cache:/app/.cache
 
 volumes:
   pgdata:
-  model-cache:

@@ -5,7 +5,8 @@ const multer = require('multer');
 const { getPostImages } = require('./controllers/matchingController');
 const { inspectSuggestion, approveSuggestion, rejectSuggestion, reviewStats } = require('./controllers/reviewController');
 const { getCosts } = require('./controllers/costController');
-const { listPosts, listImages } = require('./controllers/libraryController');
+const { listPosts, listImages, deletePost, deleteImage } = require('./controllers/libraryController');
+const { searchImages } = require('./controllers/searchController');
 const { createPost } = require('./controllers/postController');
 const { upload, uploadImage, getJob, listJobs } = require('./controllers/uploadController');
 const { getHealth } = require('./controllers/healthController');
@@ -17,6 +18,17 @@ const app = express();
 
 // parsing incoming JSON requests
 app.use(express.json());
+
+// CORS headers, so other apps and scripts can call this API from their own
+// origin. The matching, search, review and cost endpoints are a public API,
+// the bundled frontend is only one of its clients.
+app.use((req, res, next) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    next();
+});
 
 // the upload job's processor, wired here so the queue stays dependency-free
 registerProcessor('process-image', processImageIntake);
@@ -32,9 +44,16 @@ app.get('/health', getHealth);
 app.get('/posts', listPosts);
 app.get('/images', listImages);
 
+// semantic search, embeds the query locally and ranks the library in SQL
+app.get('/search', searchImages);
+
 // write endpoints, posts embed instantly, images go through the job queue
 app.post('/posts', createPost);
 app.post('/images', upload.single('image'), uploadImage);
+
+// delete endpoints, embeddings and suggestions are removed by the schema cascades
+app.delete('/posts/:id', deletePost);
+app.delete('/images/:id', deleteImage);
 
 // job polling for the upload flow
 app.get('/jobs', listJobs);

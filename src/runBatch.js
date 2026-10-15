@@ -5,10 +5,13 @@ const db = require('./db');
 
 async function run() {
     const imageDir = path.join(__dirname, '../data/images');
+    // --retag re-runs the vision model on files already in the library,
+    // used after the vision prompt changes to refresh tags and captions
+    const forceRetag = process.argv.includes('--retag');
 
-    console.log('Starting batch processing');
+    console.log(forceRetag ? 'Starting batch re-tagging (vision quota will be spent)' : 'Starting batch processing');
 
-    const summary = await processBatch(imageDir);
+    const summary = await processBatch(imageDir, { forceRetag });
 
     console.log('Batch processing complete');
     console.log(`Processed: ${summary.processed}`);

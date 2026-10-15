@@ -1,6 +1,6 @@
 const { Pool } = require('pg');
 
-// Single shared connection pool — every other module imports this
+// Single shared connection pool - every other module imports this
 // instead of opening its own connection.
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL

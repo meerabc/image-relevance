@@ -11,15 +11,15 @@
 </head>
 <body>
 <header class="topbar">
-  <div class="brand">Image Relevance <span>review console</span></div>
+  <div class="brand">Image Relevance</div>
   <nav class="tabs" role="tablist" aria-label="Sections">
     <button role="tab" data-tab="match" aria-selected="true">Match a post</button>
+    <button role="tab" data-tab="search" aria-selected="false">Search</button>
     <button role="tab" data-tab="library" aria-selected="false">Image library</button>
     <button role="tab" data-tab="add" aria-selected="false">Add content</button>
     <button role="tab" data-tab="review" aria-selected="false">Review insights</button>
     <button role="tab" data-tab="costs" aria-selected="false">AI costs</button>
   </nav>
-  <div id="status-chip" class="status-chip" role="status">checking model…</div>
 </header>
 
 <main>
@@ -27,6 +27,36 @@
     <aside class="posts" aria-label="Posts">
       <h2>Posts</h2>
       <ul id="post-list" class="post-list"></ul>
+
+      <details id="guard-panel" class="guard-panel">
+        <summary>Guard thresholds</summary>
+        <p class="hint">Defaults come from the server's tuning. Changes apply to this browser only and re-score the selected post instantly.</p>
+        <div class="threshold-row">
+          <label for="th-similarity">Similarity needed when tags relate to the topic</label>
+          <div class="threshold-control">
+            <input type="range" id="th-similarity" min="0.01" max="0.99" step="0.01" aria-label="Similarity threshold">
+            <output id="th-similarity-out" for="th-similarity">0.55</output>
+          </div>
+          <small class="default-line">server default: <span id="th-similarity-def">0.55</span></small>
+        </div>
+        <div class="threshold-row">
+          <label for="th-no-overlap">Similarity needed when no tag relates to the topic</label>
+          <div class="threshold-control">
+            <input type="range" id="th-no-overlap" min="0.01" max="0.99" step="0.01" aria-label="No-overlap similarity threshold">
+            <output id="th-no-overlap-out" for="th-no-overlap">0.65</output>
+          </div>
+          <small class="default-line">server default: <span id="th-no-overlap-def">0.65</span></small>
+        </div>
+        <div class="threshold-row">
+          <label for="th-confidence">Minimum tag confidence to trust the tags</label>
+          <div class="threshold-control">
+            <input type="range" id="th-confidence" min="0.01" max="0.99" step="0.01" aria-label="Confidence threshold">
+            <output id="th-confidence-out" for="th-confidence">0.70</output>
+          </div>
+          <small class="default-line">server default: <span id="th-confidence-def">0.70</span></small>
+        </div>
+        <button class="btn more" id="guard-reset" type="button">Reset to server defaults</button>
+      </details>
     </aside>
     <div id="match-stage" class="stage">
       <div class="empty">
@@ -34,6 +64,19 @@
         <p>The engine scores every image in the library against the post, then the mismatch guard decides whether any of them is good enough to recommend.</p>
       </div>
     </div>
+  </section>
+
+  <section id="tab-search" class="view single" role="tabpanel" hidden>
+    <div class="view-head">
+      <h1>Semantic search</h1>
+      <p class="sub">Describe the image in plain words. The whole library is ranked by meaning, not keywords.</p>
+    </div>
+    <form id="search-form" class="searchbar">
+      <input id="search-input" type="search" placeholder="e.g. a dog resting at the vet · raised fist at a rally · fox in the snow" maxlength="300" autocomplete="off" aria-label="Search query">
+      <button class="btn primary" type="submit">Search</button>
+    </form>
+    <p id="search-meta" class="sub" aria-live="polite"></p>
+    <div id="search-grid" class="lib-grid"></div>
   </section>
 
   <section id="tab-library" class="view single" role="tabpanel" hidden>
@@ -46,23 +89,31 @@
 
   <section id="tab-add" class="view single" role="tabpanel" hidden>
     <div class="view-head"><h1>Add content</h1></div>
-    <div class="add-grid">
-      <form id="post-form" class="card-pad" novalidate>
+    <div class="subtabs" role="tablist" aria-label="Content type">
+      <button role="tab" data-sub="post" aria-selected="true">Write a post</button>
+      <button role="tab" data-sub="image" aria-selected="false">Upload an image</button>
+    </div>
+
+    <div id="sub-post" class="subview" role="tabpanel">
+      <form id="post-form" class="card-pad narrow" novalidate>
         <h2>New post</h2>
         <label>Title
           <input id="post-title" type="text" minlength="3" maxlength="200" placeholder="Behavior and Habitat of Red Foxes" required>
         </label>
-        <label>Topic
+        <label>Topic keyword
           <input id="post-topic" type="text" minlength="2" maxlength="100" placeholder="red fox" required>
         </label>
+        <p class="hint">The topic keyword is what image tags are matched against, the title is the headline readers see. One or two words works best, e.g. "red fox".</p>
         <label>Content
           <textarea id="post-content" rows="6" minlength="20" maxlength="5000" placeholder="A paragraph or two about the topic…" required></textarea>
         </label>
         <button class="btn primary" type="submit">Save &amp; embed post</button>
-        <p class="hint">The post is embedded locally the moment it is saved — no API key, no quota.</p>
+        <p class="hint">The post is embedded locally the moment it is saved. No API key and no quota involved.</p>
       </form>
+    </div>
 
-      <div class="card-pad">
+    <div id="sub-image" class="subview" role="tabpanel" hidden>
+      <div class="card-pad narrow">
         <h2>Upload an image</h2>
         <label class="dropzone" for="image-input">
           <input type="file" id="image-input" accept="image/jpeg,image/png" hidden>
@@ -78,7 +129,7 @@
   <section id="tab-review" class="view single" role="tabpanel" hidden>
     <div class="view-head">
       <h1>Review insights</h1>
-      <p class="sub">Where human decisions disagree with the guard — each one is a case worth investigating.</p>
+      <p class="sub">Candidates where the human decision differs from the guard verdict. Each row is a calibration signal.</p>
     </div>
     <div id="review-summary" class="stat-grid"></div>
     <div class="table-wrap"><table id="review-table"></table></div>
@@ -92,6 +143,26 @@
 </main>
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<div id="confirm" class="confirm" hidden role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-text">
+  <div class="confirm-card">
+    <h2 id="confirm-title"></h2>
+    <p id="confirm-text"></p>
+    <div class="confirm-actions">
+      <button class="btn" id="confirm-cancel" type="button">Cancel</button>
+      <button class="btn danger" id="confirm-ok" type="button">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="lightbox" class="lightbox" hidden role="dialog" aria-modal="true" aria-label="Image preview">
+  <button class="lightbox-close" type="button" aria-label="Close preview">&times;</button>
+  <figure>
+    <img id="lightbox-img" alt="">
+    <figcaption id="lightbox-cap"></figcaption>
+  </figure>
+</div>
+
 <script src="app.js"></script>
 </body>
 </html>

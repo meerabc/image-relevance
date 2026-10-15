@@ -2,22 +2,22 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs'); 
 const { imageMetadataSchema } = require('../utils/schema');
 
-// Initializing Gemini with API key from the .env file
+// The vision model that tags every image: Gemini Flash, authenticated with the API key from .env
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
 
-// Simple cost tracker in memory
+// In-memory counter of vision calls. The Flash free tier costs $0, the count shows how much work vision did.
 const costLog = {
     totalVisionCalls: 0,
-    estimatedCost: 0 // Flash free tier is $0, but we track usage count
+    estimatedCost: 0
 };
 
 async function understandImage(imagePath) {
-    // 1. Reading the image file and convert it to Base64 (text format)
+    // the image file is read and sent to the API as Base64 text
     const imageBytes = fs.readFileSync(imagePath);
     const imageBase64 = imageBytes.toString('base64');
-    
-    // Determining the image type
+
+    // the mime type comes from the file extension
     const mimeType = imagePath.endsWith('png') ? 'image/png' : 'image/jpeg';
 
     const imagePart = {
@@ -27,33 +27,34 @@ async function understandImage(imagePath) {
         }
     };
 
-    // Strict instructions for the AI
-    const prompt = `Analyze this image. Return a JSON object strictly matching this exact structure. 
+    // The prompt asks for rich tags and a full caption: every field ends up
+    // in the embedding text, so richer descriptions mean better matching.
+    const prompt = `Analyze this image for a blog-content library. Return a JSON object strictly matching this exact structure.
     Ensure the confidence field is a float number, not a string.
     {
-      "subject": "string describing the main subject",
-      "category": "string describing the broad category",
-      "attributes": ["string", "string"],
-      "caption": "string providing a descriptive caption",
+      "subject": "the main subject in 2-5 words, e.g. 'red fox' or 'woman raising fist'",
+      "category": "one broad category in lowercase, e.g. 'wildlife', 'people', 'sports and recreation'",
+      "attributes": ["3-6 short lowercase tags covering setting, mood and theme, e.g. 'sunset', 'protest', 'empowerment', 'autumn forest'"],
+      "caption": "one sentence describing the scene: the subject, what it is doing, the setting, and any symbolic or emotional theme, e.g. 'A woman raises her fist against an orange sunset sky, a symbol of empowerment and protest.'",
       "confidence": float between 0.0 and 1.0 representing certainty
     }
     Only output the raw JSON without any extra formatting or text.`;
 
     try {
-        // 2. Calling the AI model
+        // the vision model is called with the prompt and the image
         const result = await model.generateContent([prompt, imagePart]);
-        
-        // Tracking the cost/usage per call 
-        costLog.totalVisionCalls += 1; 
 
-        // 3. Cleaning and parsing the AI's text response into a JavaScript object
+        // one call is one usage count
+        costLog.totalVisionCalls += 1;
+
+        // the response text is parsed into a JavaScript object
         let textResponse = result.response.text();
-        // Stripping out markdown formatting if the AI includes it by mistake
+        // the model sometimes wraps JSON in markdown fences, those are stripped first
         textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
-        
+
         const parsedJSON = JSON.parse(textResponse);
 
-        // 4. Validating against the Zod schema; this is the mismatch guard for bad data
+        // the parsed object must match the metadata schema, invalid vision output never gets stored
         const validatedData = imageMetadataSchema.parse(parsedJSON);
         
         return {
@@ -62,7 +63,7 @@ async function understandImage(imagePath) {
         };
 
     } catch (error) {
-        // If validation fails or AI fails, we safely catch it and report the error
+        // any failure (API error, invalid JSON, schema mismatch) is reported to the caller instead of throwing
         return {
             success: false,
             error: error.message

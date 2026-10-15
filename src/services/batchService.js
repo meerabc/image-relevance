@@ -8,7 +8,7 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const PACE_DELAY_MS = 4500;
 const MAX_RETRIES = 3;
 
-async function processBatch(imageDirectory) {
+async function processBatch(imageDirectory, { forceRetag = false } = {}) {
     const files = fs.readdirSync(imageDirectory)
         .filter(file => /\.(png|jpg|jpeg)$/i.test(file))
         .sort();
@@ -19,8 +19,9 @@ async function processBatch(imageDirectory) {
         const imagePath = path.join(imageDirectory, file);
         const fileHash = hashFile(imagePath);
 
-        // hash dedupe: never spend a vision call on a file the library already has
-        const existing = await findImageByHash(fileHash);
+        // hash dedupe: never spend a vision call on a file the library already has.
+        // forceRetag bypasses it once, to re-tag the library after the vision prompt changes
+        const existing = forceRetag ? null : await findImageByHash(fileHash);
         if (existing) {
             console.log(`Skipping ${file}, already in the library as ${existing.file_name}`);
             summary.skipped++;

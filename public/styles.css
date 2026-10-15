@@ -1,8 +1,8 @@
 /* ==========================================================================
-   Image Relevance Review Console — "Warm Clay" theme
+   Image Relevance Review Console - "Warm Clay" theme
    Style: Claymorphism (soft inflated shapes, layered light, extruded buttons)
    Palette: warm sand & cream + tangerine / mint / raspberry / amber
-   Fonts:  'Bricolage Grotesque' (display) · 'Nunito' (body) — linked in HTML
+   Fonts:  'Bricolage Grotesque' (display) · 'Nunito' (body) - linked in HTML
    NOTE:   No blues, no purples, no indigo anywhere in this file.
    ========================================================================== */
 
@@ -15,7 +15,7 @@
   /* warm light palette */
   --bg-1: #f7f2ea;              /* page gradient top  */
   --bg-2: #efe6d8;              /* page gradient bottom */
-  --surface: #fbf7f0;           /* clay card base (opaque — needed for sticky th) */
+  --surface: #fbf7f0;           /* clay card base (opaque - needed for sticky th) */
   --surface-2: #f4ecdd;         /* secondary clay / tray tone */
   --well: #ece2cf;              /* inset clay wells (inputs, meters) */
   --ink: #3b322a;               /* primary warm dark-brown text */
@@ -53,7 +53,7 @@
   --shadow-chip: inset 0 1px 2px rgba(255, 255, 255, .8), inset 0 -2px 4px rgba(163, 132, 101, .12),
                  0 1px 2px rgba(120, 96, 70, .12);
 
-  /* radii — clay likes it round */
+  /* radii - clay likes it round */
   --r-xl: 28px;
   --r-lg: 24px;
   --r-md: 18px;
@@ -72,7 +72,7 @@
 *::before,
 *::after { box-sizing: border-box; }
 
-/* The app toggles `hidden` on views/toast/preview/detail — never let display
+/* The app toggles `hidden` on views/toast/preview/detail - never let display
    rules on those elements defeat it. */
 [hidden] { display: none !important; }
 
@@ -135,7 +135,7 @@ textarea:-webkit-autofill {
 }
 
 /* --------------------------------------------------------------------------
-   3. Topbar — floating clay slab: brand · tabs · health chip
+   3. Topbar - floating clay slab: brand · tabs · health chip
    -------------------------------------------------------------------------- */
 .topbar {
   position: sticky;
@@ -161,15 +161,6 @@ textarea:-webkit-autofill {
   font-size: 1.05rem;
   letter-spacing: -0.01em;
   white-space: nowrap;
-}
-.brand span {
-  margin-left: 8px;
-  font-family: var(--font-body);
-  font-size: .72rem;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--muted);
 }
 
 /* segmented clay tray */
@@ -205,42 +196,8 @@ textarea:-webkit-autofill {
               inset 0 2px 2px rgba(255, 255, 255, .9), inset 0 -3px 6px rgba(163, 132, 101, .14);
 }
 
-/* health chip — neutral / .ok mint / .err raspberry */
-.status-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border-radius: var(--r-pill);
-  font-size: .8rem;
-  font-weight: 800;
-  color: var(--ink-soft);
-  background: rgba(255, 255, 255, .55);
-  box-shadow: inset 0 2px 3px rgba(255, 255, 255, .7), inset 0 -3px 6px rgba(163, 132, 101, .12),
-              0 1px 3px rgba(120, 96, 70, .1);
-}
-.status-chip::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #c9b295;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .6);
-}
-.status-chip.ok { color: var(--ok-deep); background: var(--ok-soft); }
-.status-chip.ok::before {
-  background: radial-gradient(circle at 32% 30%, #8fdcc0, var(--ok) 70%);
-  animation: chip-pulse 2.4s ease-in-out infinite;
-}
-.status-chip.err { color: var(--bad-deep); background: var(--bad-soft); }
-.status-chip.err::before { background: radial-gradient(circle at 32% 30%, #f096a0, var(--bad) 70%); }
-
-@keyframes chip-pulse {
-  50% { box-shadow: 0 0 0 4px rgba(63, 174, 140, .18); }
-}
-
 /* --------------------------------------------------------------------------
-   4. Layout — main, views, view heads, filter pills
+   4. Layout - main, views, view heads, filter pills
    -------------------------------------------------------------------------- */
 main {
   width: min(1280px, calc(100% - 24px));
@@ -296,7 +253,7 @@ main {
 }
 
 /* --------------------------------------------------------------------------
-   5. Posts sidebar — clay card + list of clay post buttons
+   5. Posts sidebar - clay card + list of clay post buttons
    -------------------------------------------------------------------------- */
 .posts {
   position: sticky;
@@ -411,15 +368,59 @@ main {
   font-size: .95rem;
 }
 
-.post-head { margin-bottom: 16px; }
+/* post detail header: title + topic on the left, delete action on the right */
+.post-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.post-head-main { min-width: 0; }
 .post-head p {
   margin-top: 4px;
   color: var(--muted);
   font-weight: 600;
 }
+.post-head .btn.danger { flex-shrink: 0; }
+
+/* collapsible full text of the selected post */
+.post-content {
+  margin-top: 10px;
+  max-width: 72ch;
+}
+.post-content summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 6px 16px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-size: .88rem;
+  font-weight: 700;
+  cursor: pointer;
+  list-style-position: inside;
+  user-select: none;
+  box-shadow: var(--shadow-well);
+  transition: background-color .18s ease;
+}
+.post-content summary:hover { background: rgba(255, 255, 255, .6); }
+.post-content[open] summary { margin-bottom: 8px; }
+.post-content p {
+  margin: 0;
+  padding: 16px 18px;
+  background: var(--surface);
+  border-radius: var(--r-md, 16px);
+  box-shadow: var(--shadow-clay);
+  color: var(--ink-soft);
+  font-size: .95rem;
+  line-height: 1.65;
+  white-space: pre-line;
+}
 
 /* --------------------------------------------------------------------------
-   7. Verdict card — figure + body / refused variant
+   7. Verdict card - figure + body / refused variant
    -------------------------------------------------------------------------- */
 .verdict {
   display: grid;
@@ -458,7 +459,7 @@ main {
 }
 .verdict-body h2 { font-size: 1.35rem; }
 
-/* refused — single column, raspberry tint */
+/* refused - single column, raspberry tint */
 .verdict.refused {
   grid-template-columns: minmax(0, 1fr);
   background: linear-gradient(165deg, #fdf3f2, #fbe4e6);
@@ -507,7 +508,7 @@ main {
 }
 
 /* --------------------------------------------------------------------------
-   8. Meter — clay track, rounded fill, threshold marker
+   8. Meter - clay track, rounded fill, threshold marker
    -------------------------------------------------------------------------- */
 .meter {
   position: relative;
@@ -574,7 +575,7 @@ main {
 .chip.warn { background: var(--warn-soft); color: var(--warn-deep); }
 
 /* --------------------------------------------------------------------------
-   10. Buttons — extruded clay, pressed on :active
+   10. Buttons - extruded clay, pressed on :active
    -------------------------------------------------------------------------- */
 .btn {
   display: inline-flex;
@@ -608,7 +609,7 @@ main {
   filter: saturate(.6);
 }
 
-/* primary CTA — tangerine extrusion */
+/* primary CTA - tangerine extrusion */
 .btn.primary {
   background: linear-gradient(180deg, #f68a5f, #ec6f40);
   color: #fff;
@@ -626,7 +627,25 @@ main {
               0 2px 6px rgba(240, 120, 74, .28);
 }
 
-/* review toggles — soft clay at rest, sunk solid when pressed */
+/* destructive action - raspberry clay, used for post and image deletion */
+.btn.danger {
+  background: linear-gradient(180deg, #ee7683, #e25563);
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(150, 30, 45, .3);
+  box-shadow: 0 8px 18px rgba(226, 85, 99, .32), 0 2px 5px rgba(226, 85, 99, .2),
+              inset 0 2px 3px rgba(255, 255, 255, .5), inset 0 -5px 10px rgba(150, 30, 45, .26);
+}
+.btn.danger:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ee7683, #d94a59);
+  box-shadow: 0 12px 24px rgba(226, 85, 99, .38), 0 3px 8px rgba(226, 85, 99, .2),
+              inset 0 2px 3px rgba(255, 255, 255, .55), inset 0 -5px 10px rgba(150, 30, 45, .26);
+}
+.btn.danger:active:not(:disabled) {
+  box-shadow: inset 0 4px 9px rgba(140, 25, 40, .4), inset 0 -2px 4px rgba(255, 255, 255, .35),
+              0 2px 6px rgba(226, 85, 99, .28);
+}
+
+/* review toggles - soft clay at rest, sunk solid when pressed */
 .btn.approve {
   background: linear-gradient(180deg, #e9f6ef, #d7eee2);
   color: var(--ok-deep);
@@ -824,7 +843,7 @@ main {
 }
 
 /* --------------------------------------------------------------------------
-   13. Add content — clay form cards, wells, dropzone
+   13. Add content - clay form cards, wells, dropzone
    -------------------------------------------------------------------------- */
 .add-grid {
   display: grid;
@@ -889,7 +908,7 @@ main {
 }
 .muted { color: var(--muted); }
 
-/* dropzone — dashed clay tray */
+/* dropzone - dashed clay tray */
 .dropzone {
   display: flex;
   flex-direction: column;
@@ -927,7 +946,7 @@ main {
   box-shadow: 0 8px 18px rgba(120, 96, 70, .2), inset 0 2px 3px rgba(255, 255, 255, .6);
 }
 
-/* upload status — appears only when it has content */
+/* upload status - appears only when it has content */
 .upload-status {
   display: grid;
   gap: 8px;
@@ -988,7 +1007,7 @@ main {
 .stat.alert span { color: #a06a72; }
 
 /* --------------------------------------------------------------------------
-   15. Tables — clay frame, sticky head, warm thin scrollbars
+   15. Tables - clay frame, sticky head, warm thin scrollbars
    -------------------------------------------------------------------------- */
 .table-wrap {
   max-height: 440px;
@@ -1100,11 +1119,10 @@ main {
 .post-list::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #c7ae90, #b29572) padding-box; }
 
 /* --------------------------------------------------------------------------
-   18. Responsive — stack everything under 900px
+   18. Responsive - stack everything under 900px
    -------------------------------------------------------------------------- */
 @media (max-width: 900px) {
   .topbar { flex-wrap: wrap; }
-  .status-chip { margin-left: auto; }
   .tabs {
     order: 3;
     flex-basis: 100%;
@@ -1145,6 +1163,10 @@ main {
   .cand-detail dt { margin-top: 8px; }
   .stat-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
   .empty { padding: 36px 20px; }
+  .post-head { flex-direction: column; }
+  .post-head .btn.danger { width: 100%; }
+  .confirm-actions { flex-direction: column-reverse; }
+  .confirm-actions .btn { width: 100%; }
 }
 
 /* --------------------------------------------------------------------------
@@ -1161,5 +1183,282 @@ main {
   }
   .verdict { animation: none; }
   .toast { animation: none; }
-  .status-chip.ok::before { animation: none; }
+  .confirm-card { animation: none; }
 }
+
+/* --------------------------------------------------------------------------
+   Add-content sub-tabs + lightbox preview
+   -------------------------------------------------------------------------- */
+.subtabs {
+  display: inline-flex;
+  gap: 6px;
+  padding: 8px;
+  margin-bottom: 22px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  box-shadow: inset 0 2px 6px rgba(163, 132, 101, .18);
+}
+.subtabs button {
+  border: 0;
+  background: transparent;
+  padding: 10px 26px;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 800;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.subtabs button[aria-selected="true"] {
+  background: var(--surface);
+  color: var(--accent-deep);
+  box-shadow: 0 6px 14px rgba(163, 132, 101, .25);
+}
+.subview[hidden] { display: none; }
+.narrow { max-width: 680px; }
+
+.zoomable { cursor: zoom-in; }
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(59, 50, 42, .55);
+  backdrop-filter: blur(6px);
+}
+.lightbox[hidden] { display: none; }
+.lightbox figure {
+  margin: 0;
+  max-width: min(1000px, 94vw);
+  background: var(--surface);
+  padding: 16px;
+  border-radius: 30px;
+  box-shadow: 0 30px 80px rgba(59, 50, 42, .45);
+}
+.lightbox img {
+  display: block;
+  width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+  border-radius: 18px;
+  background: var(--well);
+}
+.lightbox figcaption {
+  padding: 14px 8px 4px;
+  color: var(--ink-soft);
+  font-size: .95rem;
+  text-align: center;
+}
+.lightbox-close {
+  position: fixed;
+  top: 18px;
+  right: 22px;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(59, 50, 42, .35);
+}
+
+/* ---------- semantic search ---------- */
+.searchbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.searchbar input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 11px 16px;
+  border: 1px solid rgba(163, 132, 101, .18);
+  border-radius: var(--r-sm);
+  background: var(--well);
+  box-shadow: var(--shadow-well);
+  color: var(--ink);
+}
+.searchbar input::placeholder { color: rgba(138, 122, 107, .8); }
+.searchbar input:focus {
+  outline: none;
+  border-color: rgba(240, 120, 74, .55);
+  box-shadow: inset 0 3px 6px rgba(120, 96, 70, .16), inset 0 -1px 0 rgba(255, 255, 255, .8),
+              0 0 0 3px rgba(240, 120, 74, .22);
+}
+.searchbar .btn { min-height: 48px; white-space: nowrap; }
+#search-meta { margin: 0 2px 14px; }
+@media (max-width: 560px) {
+  .searchbar { flex-direction: column; }
+  .searchbar .btn { width: 100%; }
+}
+
+/* --------------------------------------------------------------------------
+   21. Confirmation dialog (delete post / delete image)
+   -------------------------------------------------------------------------- */
+.confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(59, 50, 42, .55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.confirm[hidden] { display: none; }
+.confirm-card {
+  width: min(440px, 100%);
+  padding: 24px;
+  background: var(--surface);
+  border-radius: 24px;
+  box-shadow: 0 30px 80px rgba(59, 50, 42, .45);
+  animation: confirm-in .3s cubic-bezier(.22, 1.1, .35, 1) both;
+}
+.confirm-card h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--ink);
+}
+.confirm-card p {
+  margin: 10px 0 0;
+  color: var(--ink-soft);
+  font-size: .92rem;
+  line-height: 1.55;
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+@keyframes confirm-in {
+  from { opacity: 0; transform: translateY(14px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* --------------------------------------------------------------------------
+   22. Library card delete buttons
+   -------------------------------------------------------------------------- */
+.card { position: relative; }
+.card-delete {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: 12px;
+  background: rgba(251, 247, 240, .92);
+  color: var(--muted);
+  font-size: 1.15rem;
+  line-height: 1;
+  box-shadow: 0 4px 9px rgba(120, 96, 70, .2), inset 0 2px 2px rgba(255, 255, 255, .8);
+  opacity: 0;
+  transition: opacity .18s ease, color .18s ease, background-color .18s ease, transform .18s ease;
+}
+.card:hover .card-delete,
+.card-delete:focus-visible { opacity: 1; }
+.card-delete:hover {
+  background: var(--bad-soft);
+  color: var(--bad-deep);
+  transform: translateY(-1px);
+}
+@media (hover: none) {
+  .card-delete { opacity: 1; } /* touch screens have no hover, keep it visible */
+}
+
+/* --------------------------------------------------------------------------
+   23. Guard threshold panel (match sidebar)
+   -------------------------------------------------------------------------- */
+.guard-panel {
+  margin-top: 14px;
+  padding: 12px 8px 8px;
+  border-top: 1px solid rgba(163, 132, 101, .18);
+}
+.guard-panel summary {
+  padding: 8px;
+  border-radius: var(--r-sm);
+  color: var(--ink-soft);
+  font-weight: 700;
+  font-size: .92rem;
+  cursor: pointer;
+  list-style-position: inside;
+  user-select: none;
+  transition: background-color .18s ease;
+}
+.guard-panel summary:hover { background: var(--surface-2); }
+.guard-panel .hint { margin: 8px 8px 4px; font-size: .8rem; }
+
+.threshold-row {
+  padding: 10px 8px 4px;
+}
+.threshold-row label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: .8rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.threshold-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.threshold-control input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  height: 44px; /* touch target lives in the track row */
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.threshold-control output {
+  min-width: 44px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: var(--well);
+  box-shadow: var(--shadow-well);
+  color: var(--ink);
+  font-size: .85rem;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.default-line {
+  display: block;
+  margin-top: 2px;
+  padding-left: 2px;
+  color: var(--muted);
+  font-size: .72rem;
+}
+.guard-panel .btn.more {
+  width: calc(100% - 16px);
+  margin: 10px 8px 4px;
+}
+
+/* --------------------------------------------------------------------------
+   24. Unscored images notice in match results
+   -------------------------------------------------------------------------- */
+.unscored-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  background: var(--warn-soft);
+  color: var(--warn-deep);
+  font-size: .86rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.unscored-note .chip { flex-shrink: 0; }

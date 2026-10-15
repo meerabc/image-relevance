@@ -1,5 +1,6 @@
-const { evaluateMatch } = require('./mismatchGuard');
+const { evaluateMatch, DEFAULT_THRESHOLDS } = require('./mismatchGuard');
 const { EMBEDDING_MODEL_NAME } = require('./embeddingService');
+const { maybeRepairMissingEmbeddings } = require('./embeddingRepair');
 const db = require('../db');
 
 // fetching a post along with its stored embedding
@@ -48,10 +49,27 @@ async function saveSuggestion(postId, imageId, score, isMatch, reason) {
     return result.rows[0];
 }
 
+// images that have vision tags but no embedding for the active model are
+// excluded by the join above, so they are counted separately and reported:
+// a silent gap between library size and scored candidates is exactly the kind
+// of staleness this service exists to prevent. Each hit schedules a repair.
+async function countUnscoredImages() {
+    const result = await db.query(
+        `SELECT count(*)::int AS unscored
+         FROM images i
+         LEFT JOIN image_embeddings ie ON ie.image_id = i.id AND ie.model = $1
+         WHERE i.caption IS NOT NULL AND ie.image_id IS NULL`,
+        [EMBEDDING_MODEL_NAME]
+    );
+    return result.rows[0].unscored;
+}
+
 // shared core: rank, evaluate through the guard, optionally persist
 // the persist flag keeps measurement scripts (eval, threshold sweep) from
-// writing anything, only the live API path saves suggestions
-async function evaluateCandidates(postId, { persist }) {
+// writing anything, only the live API path saves suggestions.
+// thresholds: optional override object { similarity, noOverlap, confidence };
+// when omitted the guard's configured defaults are used.
+async function evaluateCandidates(postId, { persist, thresholds } = {}) {
     const post = await getPostWithEmbedding(postId);
 
     if (!post) {
@@ -65,7 +83,7 @@ async function evaluateCandidates(postId, { persist }) {
     const evaluations = [];
 
     for (const image of rankedImages) {
-        const evaluation = evaluateMatch(Number(image.score), image, post.topic);
+        const evaluation = evaluateMatch(Number(image.score), image, post.topic, thresholds || DEFAULT_THRESHOLDS);
         let suggestionId = null;
         let reviewStatus = null;
 
@@ -84,24 +102,32 @@ async function evaluateCandidates(postId, { persist }) {
             confidence: image.confidence,
             score: evaluation.score,
             isMatch: evaluation.isMatch,
-            reason: evaluation.reason
+            reason: evaluation.reason,
+            checks: evaluation.checks
         });
     }
 
     // rows already come back ranked, keeping the sort as a safety net
     evaluations.sort((a, b) => b.score - a.score);
 
-    return { success: true, post, evaluations };
+    const unscored = await countUnscoredImages();
+    if (unscored > 0) {
+        // fire and forget: repairs run outside the request, the response
+        // already tells the UI how many images are waiting to be embedded
+        maybeRepairMissingEmbeddings();
+    }
+
+    return { success: true, post, evaluations, unscored };
 }
 
-async function findMatchesForPost(postId) {
-    const result = await evaluateCandidates(postId, { persist: true });
+async function findMatchesForPost(postId, thresholds) {
+    const result = await evaluateCandidates(postId, { persist: true, thresholds });
 
     if (!result.success) {
         return result;
     }
 
-    const { post, evaluations } = result;
+    const { post, evaluations, unscored } = result;
     const approvedMatches = evaluations.filter(item => item.isMatch);
 
     if (approvedMatches.length > 0) {
@@ -109,8 +135,10 @@ async function findMatchesForPost(postId) {
             success: true,
             postTitle: post.title,
             postTopic: post.topic,
+            postContent: post.content,
             topMatch: approvedMatches[0],
-            allCandidates: evaluations
+            allCandidates: evaluations,
+            unscored
         };
     }
 
@@ -119,12 +147,14 @@ async function findMatchesForPost(postId) {
         success: true,
         postTitle: post.title,
         postTopic: post.topic,
+        postContent: post.content,
         topMatch: null,
         status: 'NO_CONFIDENT_MATCH',
         reason: evaluations.length > 0
             ? evaluations[0].reason
             : 'No image candidates were available for matching.',
-        allCandidates: evaluations
+        allCandidates: evaluations,
+        unscored
     };
 }
 

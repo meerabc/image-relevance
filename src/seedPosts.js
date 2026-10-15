@@ -1,6 +1,6 @@
 require('dotenv').config();
 const db = require('./db');
-const { generateEmbedding, toVectorLiteral, EMBEDDING_MODEL_NAME } = require('./services/embeddingService');
+const { generateEmbedding, buildPostEmbeddingText, toVectorLiteral, EMBEDDING_MODEL_NAME } = require('./services/embeddingService');
 const { logCost } = require('./services/costService');
 
 const posts = [
@@ -43,7 +43,7 @@ async function seed() {
     await db.query('DELETE FROM posts');
 
     for (const post of posts) {
-        // Inserting the post itself
+        // inserting the post row
         const insertResult = await db.query(
             `INSERT INTO posts (title, topic, content) VALUES ($1, $2, $3)
              RETURNING id`,
@@ -52,8 +52,8 @@ async function seed() {
         const postId = insertResult.rows[0].id;
         console.log(`Inserted post ${postId}: "${post.title}"`);
 
-        // Generating and store its embedding
-        const embeddingResult = await generateEmbedding(post.content);
+        // generating and storing its embedding from the topic-focused text
+        const embeddingResult = await generateEmbedding(buildPostEmbeddingText(post));
         await logCost('embedding', `post:${postId}`, embeddingResult.success);
 
         if (!embeddingResult.success) {

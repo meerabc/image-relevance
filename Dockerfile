@@ -5,13 +5,12 @@ FROM node:24-slim
 WORKDIR /app
 
 COPY package*.json ./
-# npm install (not ci): the lockfile is generated on Windows, which omits
-# Linux-only optional deps (@emnapi) and makes strict npm ci fail in the container
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 
 COPY src ./src
 COPY public ./public
 
+# the corpus of images is expected to be volume-mounted or baked in
 ENV NODE_ENV=production
 
 EXPOSE 3000

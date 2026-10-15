@@ -64,13 +64,35 @@ async function run() {
     console.log('similarity | no-overlap | precision | failing topics');
     console.log('-----------+------------+-----------+----------------');
     for (const r of results) {
-        const line = `   ${r.similarity.toFixed(2)}    |   ${r.noOverlap.toFixed(2)}    |   ${r.correct}/${ranked.length}     | ${r.failures.join(', ') || '—'}`;
+        const line = `   ${r.similarity.toFixed(2)}    |   ${r.noOverlap.toFixed(2)}    |   ${r.correct}/${ranked.length}     | ${r.failures.join(', ') || 'none'}`;
         console.log(line);
     }
 
     const best = [...results].sort((a, b) => b.correct - a.correct)[0];
-    console.log(`\nBest operating point: similarity ${best.similarity}, no-overlap ${best.noOverlap} (${best.correct}/${ranked.length})`);
-    console.log('Update DEFAULT_THRESHOLDS in src/services/mismatchGuard.js to adopt it.');
+    console.log(`\nBest operating point on the labeled set: similarity ${best.similarity}, no-overlap ${best.noOverlap} (${best.correct}/${ranked.length} correct)`);
+    console.log('To adopt it, add these lines to .env and restart the app:');
+    console.log(`  SIMILARITY_THRESHOLD=${best.similarity}`);
+    console.log(`  NO_OVERLAP_THRESHOLD=${best.noOverlap}`);
+
+    // raw score landscape for every embedded post, labeled or not. This is the
+    // view that exposes false rejections: a true match showing up under the
+    // recommended line means the labeled set is missing that pair.
+    console.log('\nScore report for every embedded post (top 3 candidates):');
+    const allPosts = await db.query(
+        `SELECT p.id, p.topic, p.title
+         FROM posts p
+         JOIN post_embeddings pe ON pe.post_id = p.id
+         ORDER BY p.id`
+    );
+
+    for (const post of allPosts.rows) {
+        const result = await rankImagesForPost(post.id);
+        if (!result.success) continue;
+        const top = result.evaluations.slice(0, 3)
+            .map(item => `${item.file} ${item.score.toFixed(2)}`)
+            .join(' | ');
+        console.log(`  [${post.id}] "${post.title}" (${post.topic}): ${top}`);
+    }
 
     await db.pool.end();
 }

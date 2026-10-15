@@ -1,5 +1,5 @@
 const { z } = require('zod');
-const { generateEmbedding, toVectorLiteral, EMBEDDING_MODEL_NAME } = require('../services/embeddingService');
+const { generateEmbedding, buildPostEmbeddingText, toVectorLiteral, EMBEDDING_MODEL_NAME } = require('../services/embeddingService');
 const { logCost } = require('../services/costService');
 const db = require('../db');
 const logger = require('../utils/logger');
@@ -11,7 +11,7 @@ const createPostSchema = z.object({
 });
 
 // creating a post and embedding it in the same request, the post is
-// immediately matchable — no API key and no quota involved
+// immediately matchable - no API key and no quota involved
 async function createPost(req, res) {
     const parsed = createPostSchema.safeParse(req.body);
 
@@ -25,7 +25,7 @@ async function createPost(req, res) {
     const { title, topic, content } = parsed.data;
 
     try {
-        const embeddingResult = await generateEmbedding(content);
+        const embeddingResult = await generateEmbedding(buildPostEmbeddingText({ title, topic, content }));
         await logCost('embedding', 'post:new', embeddingResult.success);
 
         if (!embeddingResult.success) {

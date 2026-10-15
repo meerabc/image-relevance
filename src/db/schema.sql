@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS post_embeddings (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Suggestions: one row per (post, image) evaluation — this is what the Review API works on
+-- Suggestions: one row per (post, image) evaluation - this is what the Review API works on
 CREATE TABLE IF NOT EXISTS suggestions (
     id SERIAL PRIMARY KEY,
     post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
@@ -65,11 +65,11 @@ CREATE TABLE IF NOT EXISTS cost_log (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- upgrades for databases created before these columns existed
+-- columns added after the first schema version, migrating applies them to older databases
 ALTER TABLE images ADD COLUMN IF NOT EXISTS file_hash TEXT;
 ALTER TABLE image_embeddings ADD COLUMN IF NOT EXISTS model TEXT;
 ALTER TABLE post_embeddings ADD COLUMN IF NOT EXISTS model TEXT;
--- existing vectors were produced by the local MiniLM model
+-- rows without a model label are filled in with the local MiniLM model
 UPDATE image_embeddings SET model = 'Xenova/all-MiniLM-L6-v2' WHERE model IS NULL;
 UPDATE post_embeddings SET model = 'Xenova/all-MiniLM-L6-v2' WHERE model IS NULL;
 

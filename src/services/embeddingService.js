@@ -1,4 +1,6 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const path = require('path');
+const { normalizeCategory } = require('../utils/categories');
 
 const LOCAL_MODEL = 'Xenova/all-MiniLM-L6-v2'; // 384 dims
 const GEMINI_MODEL = 'gemini-embedding-001';   // 3072 dims, kept for the provider comparison
@@ -17,6 +19,13 @@ function getExtractor() {
     if (!extractorPromise) {
         const { pipeline, env } = require('@xenova/transformers');
         env.allowLocalModels = false;
+        // the fetch cache must live in ./.cache, the folder the compose file
+        // bind-mounts into the container. The library default is .cache inside
+        // node_modules, which is wiped on every image rebuild, so the model
+        // would be re-downloaded from the Hugging Face hub at runtime on every
+        // fresh container. One download here is shared by the container, the
+        // CLI scripts and the repair sweep, and survives rebuilds.
+        env.cacheDir = path.resolve('./.cache');
         extractorPromise = pipeline('feature-extraction', LOCAL_MODEL);
     }
     return extractorPromise;
@@ -55,9 +64,33 @@ function toVectorLiteral(vector) {
     return `[${vector.join(',')}]`;
 }
 
+// ---------- embedding text builders ----------
+// WHAT gets embedded matters as much as the model embedding it. Both sides of
+// the comparison are built here so their "concept density" stays comparable:
+// an image is represented by every tag the vision model produced, a post by
+// its theme (topic + title) plus a content excerpt that fits the model window.
+// Embedding only the raw caption or content lets long prose dominate short
+// captions and bury the topic the post is actually about.
+function buildImageEmbeddingText(meta) {
+    const parts = [
+        meta.subject,
+        normalizeCategory(meta.category),
+        Array.isArray(meta.attributes) ? meta.attributes.join(', ') : '',
+        meta.caption
+    ];
+    return parts.filter(Boolean).join('. ');
+}
+
+function buildPostEmbeddingText(post) {
+    const excerpt = (post.content || '').slice(0, 600);
+    return [post.topic, post.title, excerpt].filter(Boolean).join('. ');
+}
+
 module.exports = {
     generateEmbedding,
     toVectorLiteral,
+    buildImageEmbeddingText,
+    buildPostEmbeddingText,
     EMBEDDING_PROVIDER,
     EMBEDDING_MODEL_NAME
 };
